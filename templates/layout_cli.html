@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hobbys Car Audio — Cliente</title>
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <input type="checkbox" id="menu-toggle">
+
+    <div class="app-wrapper">
+
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Hobbys Car Audio">
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">Tienda</div>
+                <a href="#" class="nav-item {% if active == 'catalogo' %}active{% endif %}">
+                    <i class="ph ph-storefront"></i> Catálogo de Productos
+                </a>
+
+                <div class="nav-section">Mis Compras</div>
+                <a href="#" class="nav-item {% if active == 'historial' %}active{% endif %}">
+                    <i class="ph ph-clock-counter-clockwise"></i> Historial de Compras
+                </a>
+
+                <div class="nav-section">Mi Cuenta</div>
+                <a href="#" class="nav-item {% if active == 'perfil' %}active{% endif %}">
+                    <i class="ph ph-user-circle"></i> Ver Perfil
+                </a>
+            </nav>
+
+            <a href="#" class="btn-logout">
+                <i class="ph ph-sign-out"></i> Cerrar Sesión
+            </a>
+        </aside>
+
+        <div class="main-wrapper">
+
+            <header class="topbar">
+                <div class="topbar-left">
+                    <label for="menu-toggle" class="hamburger">
+                        <i class="ph ph-list"></i>
+                    </label>
+                    <span class="page-title">{% block page_title %}#{% endblock %}</span>
+                </div>
+                <div class="topbar-right">
+                    <span class="date-chip">#</span>
+                    <div class="icon-btn">
+                        <i class="ph ph-bell"></i>
+                    </div>
+                    <div class="topbar-avatar" style="background:linear-gradient(135deg,var(--red),var(--yellow))">
+                        {{ usuario_iniciales }}
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div class="flash-container">
+                    {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% block container %}
+                {% endblock %}
+            </main>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
