@@ -1,0 +1,150 @@
+{% extends "layout_cli.html" %}
+
+{% block page_title %}CATALOGO DE PRODUCTOS{% endblock %}
+
+{% block container %}
+<section class="catalog-page fade-up">
+    <div class="catalog-header">
+        <div>
+            <p class="section-eyebrow">Tienda</p>
+            <h1 class="section-title">Catalogo de productos</h1>
+            <p class="section-copy">Explora los productos disponibles en la base de datos y agregalos al carrito.</p>
+        </div>
+
+        <form class="catalog-search" method="get" action="{{ url_for('catalogo_cliente.catalogo') }}">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="search" name="q" placeholder="Buscar producto" value="{{ busqueda or '' }}">
+        </form>
+    </div>
+
+    <div class="catalog-layout">
+        <div class="product-grid">
+            {% for producto in productos %}
+            <article class="product-card color-{{ producto.color }}">
+                <div class="product-image">
+                    {% if producto.imagen %}
+                    <img src="{{ producto.imagen }}" alt="{{ producto.nombre }}">
+                    {% else %}
+                    <div class="product-placeholder">
+                        <i class="ph ph-image-square"></i>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="product-info">
+                    <div>
+                        <h3>{{ producto.nombre }}</h3>
+                        <p>{{ producto.descripcion }}</p>
+                    </div>
+
+                    <div class="product-meta">
+                        <span>Stock: {{ producto.stock }}</span>
+                    </div>
+
+                    <div class="product-footer">
+                        <strong>${{ "%.2f"|format(producto.precio) }}</strong>
+
+                        <form method="post" action="{{ url_for('catalogo_cliente.agregar_al_carrito') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <button type="submit" class="add-cart-btn" aria-label="Anadir {{ producto.nombre }} al carrito" {% if producto.stock <= 0 %}disabled{% endif %}>
+                                <i class="ph ph-plus-circle"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+            {% else %}
+            <div class="empty-state">
+                <i class="ph ph-package"></i>
+                <h3>No se encontraron productos</h3>
+                <p>No hay productos activos o el filtro no devolvio coincidencias.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <aside class="cart-panel">
+            <div class="cart-title">
+                <i class="ph ph-shopping-bag-open"></i>
+                <h2>Carrito</h2>
+            </div>
+
+            <div class="cart-items">
+                {% for item in carrito %}
+                <div class="cart-item-card">
+                    <div class="cart-item-head">
+                        <span>{{ item.nombre }}</span>
+                        <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
+                    </div>
+
+                    <div class="cart-item-detail">
+                        <span>{{ item.cantidad }} u. x ${{ "%.2f"|format(item.precio) }}</span>
+                        <span>Stock: {{ item.stock }}</span>
+                    </div>
+
+                    <div class="cart-item-actions">
+                        <form method="post" action="{{ url_for('catalogo_cliente.actualizar_carrito') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="restar">
+                            <button type="submit" class="cart-qty-btn" aria-label="Restar unidad">
+                                <i class="ph ph-minus"></i>
+                            </button>
+                        </form>
+
+                        <span class="cart-qty">{{ item.cantidad }}</span>
+
+                        <form method="post" action="{{ url_for('catalogo_cliente.actualizar_carrito') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="sumar">
+                            <button type="submit" class="cart-qty-btn" aria-label="Sumar unidad" {% if item.cantidad >= item.stock %}disabled{% endif %}>
+                                <i class="ph ph-plus"></i>
+                            </button>
+                        </form>
+
+                        <form method="post" action="{{ url_for('catalogo_cliente.actualizar_carrito') }}" class="cart-remove-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="eliminar">
+                            <button type="submit" class="cart-remove-btn" aria-label="Eliminar producto">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p class="cart-empty">Aun no has agregado productos.</p>
+                {% endfor %}
+            </div>
+
+            <div class="cart-summary">
+                <div>
+                    <span>Articulos</span>
+                    <strong>{{ resumen.cantidad_total }}</strong>
+                </div>
+                <div>
+                    <span>Subtotal</span>
+                    <strong>${{ "%.2f"|format(resumen.subtotal) }}</strong>
+                </div>
+                <div>
+                    <span>Total</span>
+                    <strong>${{ "%.2f"|format(resumen.total) }}</strong>
+                </div>
+            </div>
+
+            <form method="post" action="{{ url_for('catalogo_cliente.realizar_compra') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                <button type="submit" class="btn btn-blue cart-action" {% if not carrito %}disabled{% endif %}>
+                    Realizar compra
+                </button>
+            </form>
+        </aside>
+    </div>
+</section>
+{% endblock %}
