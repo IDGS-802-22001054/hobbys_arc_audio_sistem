@@ -1,0 +1,52 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}NUEVO PROVEEDOR{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <h2>REGISTRO DE NUEVO PROVEEDOR</h2>
+    <a href="{{ url_for('proveedores.listar') }}" class="btn" style="background: var(--surface); color: var(--muted);">
+        <i class="ph ph-arrow-left"></i> VOLVER A LA LISTA
+    </a>
+</div>
+
+<div class="table-wrapper fade-up" style="max-width: 850px; margin: 0 auto;">
+    <form action="{{ url_for('proveedores.registrar') }}" method="POST">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label>Nombre de la Empresa</label>
+                <input type="text" name="nombre" class="form-input" placeholder="Ej. AudioMaster" required>
+            </div>
+
+            <div class="form-group">
+                <label>RFC</label>
+                <input type="text" name="rfc" class="form-input" placeholder="ABC123456XYZ" required>
+            </div>
+
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" name="telefono" class="form-input" placeholder="(477) 000 0000">
+            </div>
+
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" name="correo" class="form-input" placeholder="contacto@empresa.com">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Dirección Completa</label>
+            <textarea name="direccion" class="form-input" rows="3" style="resize: none;" placeholder="Calle, Número, Colonia..."></textarea>
+        </div>
+
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 12px;">
+            <button type="reset" class="btn" style="background: var(--card2); color: var(--text);">
+                LIMPIAR FORMULARIO
+            </button>
+            <button type="submit" class="btn-add" style="border: none; cursor: pointer;">
+                <i class="ph ph-plus-circle"></i> GUARDAR PROVEEDOR
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

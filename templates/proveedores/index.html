@@ -1,0 +1,83 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}PROVEEDORES{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <h2>GESTIÓN DE PROVEEDORES</h2>
+    
+    <div class="header-tools">
+        <form action="{{ url_for('proveedores.listar') }}" method="GET" class="search-container">
+            <input type="text" name="search" placeholder="Buscar Proveedores" value="{{ search or '' }}">
+            <button type="submit" style="background:none; border:none; cursor:pointer;">
+                <i class="ph ph-magnifying-glass"></i>
+            </button>
+        </form>
+        
+        <a href="{{ url_for('proveedores.registrar') }}" class="btn-add">
+            + NUEVO PROVEEDOR
+        </a>
+    </div>
+</div>
+
+<div class="table-wrapper fade-up" style="animation-delay: 0.1s;">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>EMPRESA</th>
+                <th>RFC</th>
+                <th>TELÉFONO</th>
+                <th>CORREO</th>
+                <th>DIRECCIÓN</th>
+                <th>ESTATUS</th>
+                <th style="text-align: center;">ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in proveedores %}
+            {# Fila oscurecida si el proveedor está inactivo #}
+            <tr style="{{ 'background: rgba(0,0,0,0.4); opacity: 0.6;' if not p.Activo else '' }}">
+                <td>{{ p.IdProveedor }}</td>
+                <td style="color: var(--text)">{{ p.NombreEmpresa }}</td>
+                <td>{{ p.RFC }}</td>
+                <td>{{ p.Telefono }}</td>
+                <td>{{ p.CorreoElectronico }}</td>
+                <td style="font-size: 11px;">{{ p.Direccion }}</td>
+                <td>
+                    <span style="color: {{ 'var(--green)' if p.Activo else 'var(--red)' }}; font-weight: bold;">
+                        {{ 'Activo' if p.Activo else 'Inactivo' }}
+                    </span>
+                </td>
+                <td class="actions-cell" style="text-align: center;">
+                    <a href="{{ url_for('proveedores.detalles', id=p.IdProveedor) }}" class="btn-square bg-view" title="Ver Detalles">
+                        <i class="ph ph-eye"></i>
+                    </a>
+
+                    <a href="{{ url_for('proveedores.editar', id=p.IdProveedor) }}" class="btn-square bg-edit" title="Editar">
+                        <i class="ph ph-pencil-simple"></i>
+                    </a>
+
+                    {# Lógica de botón Desactivar / Reactivar sin Script #}
+                    {% if p.Activo %}
+                        <a href="{{ url_for('proveedores.desactivar', id=p.IdProveedor) }}" 
+                           class="btn-square bg-delete" 
+                           title="Desactivar"
+                           onclick="return confirm('¿Desea desactivar este proveedor?');">
+                            <i class="ph ph-trash"></i>
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('proveedores.reactivar', id=p.IdProveedor) }}" 
+                           class="btn-square" 
+                           style="background: rgba(52, 152, 219, 0.2); color: var(--blue);" 
+                           title="Reactivar">
+                            <i class="ph ph-arrow-counter-clockwise"></i>
+                        </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

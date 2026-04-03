@@ -1,0 +1,67 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}EDITAR: {{ mp.Nombre }}{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <a href="{{ url_for('materia_prima.listar') }}" style="color: var(--muted2); font-size: 24px;">
+            <i class="ph ph-x"></i>
+        </a>
+        <div>
+            <h2 style="margin: 0;">EDITAR MATERIA PRIMA</h2>
+            <p style="font-size: 11px; color: var(--muted2); font-weight: 700; text-transform: uppercase;">Modificando ID: #MP-{{ mp.IdMateriaPrima }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="form-container fade-up" style="max-width: 800px; margin: 0 auto; background: var(--surface); padding: 40px; border-radius: 20px; border: 1px solid var(--border);">
+    <form action="{{ url_for('materia_prima.editar', id=mp.IdMateriaPrima) }}" method="POST">
+        
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">NOMBRE DEL MATERIAL</label>
+            <input type="text" name="nombre" value="{{ mp.Nombre }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="form-group">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">MARCA</label>
+                <input type="text" name="marca" value="{{ mp.Marca }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+            </div>
+            <div class="form-group">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">PRECIO UNITARIO ($)</label>
+                <input type="number" name="precio" step="0.01" value="{{ mp.PrecioUnitario }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="form-group">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">STOCK MÍNIMO (Alerta)</label>
+                <input type="number" name="stock_minimo" step="0.01" value="{{ mp.StockMinimo }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
+            </div>
+            <div class="form-group">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">PROVEEDOR</label>
+                <select name="id_proveedor" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+                    {% for p in proveedores %}
+                        <option value="{{ p.IdProveedor }}" {{ 'selected' if p.IdProveedor == mp.IdProveedor else '' }}>{{ p.NombreEmpresa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 30px;">
+            <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">DESCRIPCIÓN ADICIONAL</label>
+            <textarea name="descripcion" rows="3" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text); resize: none;">{{ mp.Descripcion }}</textarea>
+        </div>
+
+        <div style="display: flex; gap: 15px; border-top: 1px solid var(--border); padding-top: 25px;">
+            <button type="submit" class="btn-add" style="flex: 1; justify-content: center;">
+                <i class="ph ph-floppy-disk"></i> GUARDAR CAMBIOS
+            </button>
+            <a href="{{ url_for('materia_prima.listar') }}" class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--muted2);">
+                CANCELAR
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
