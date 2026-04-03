@@ -1,0 +1,59 @@
+{% extends "layout_emp.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stock.css') }}">
+{% endblock %}
+
+{% block page_title %}DETALLE DE STOCK{% endblock %}
+
+{% block container %}
+<section class="stock-detail-page fade-up">
+    <div class="detail-shell">
+        <div class="detail-media">
+            {% if producto.imagen %}
+            <img src="{{ producto.imagen }}" alt="{{ producto.nombre }}">
+            {% else %}
+            <div class="product-placeholder detail-placeholder">
+                <i class="ph ph-package"></i>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-card">
+            <div class="stock-status {% if producto.activo %}is-active{% else %}is-inactive{% endif %}">
+                {{ "Activo" if producto.activo else "Inactivo" }}
+            </div>
+            <h1>{{ producto.nombre }}</h1>
+            <p>{{ producto.descripcion }}</p>
+
+            <div class="detail-grid">
+                <div>
+                    <span>Existencia actual</span>
+                    <strong>{{ producto.stock_actual }}</strong>
+                </div>
+                <div>
+                    <span>Stock minimo</span>
+                    <strong>{{ producto.stock_minimo }}</strong>
+                </div>
+                <div>
+                    <span>Costo de fabricacion</span>
+                    <strong>${{ "%.2f"|format(producto.costo_produccion) }}</strong>
+                </div>
+                <div>
+                    <span>Precio de venta</span>
+                    <strong>${{ "%.2f"|format(producto.precio_venta) }}</strong>
+                </div>
+            </div>
+
+            <div class="detail-actions">
+                <a href="{{ url_for('stock_empleado.stock') }}" class="btn btn-blue">
+                    <i class="ph ph-arrow-left"></i> Volver
+                </a>
+                <a href="{{ url_for('stock_empleado.editar_stock', producto_id=producto.id) }}" class="btn btn-green">
+                    <i class="ph ph-pencil-simple"></i> Modificar
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

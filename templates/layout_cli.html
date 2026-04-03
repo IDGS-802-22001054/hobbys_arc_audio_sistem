@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hobbys Car Audio — Cliente</title>
+    <title>Hobbys Car Audio - Cliente</title>
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
 </head>
 
 <body>
@@ -17,13 +18,13 @@
 
         <aside class="sidebar">
             <div class="sidebar-logo">
-                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Hobbys Car Audio">
+                <img src="{{ url_for('static', filename='img/Logo.png') }}" alt="Hobbys Car Audio">
             </div>
 
             <nav class="sidebar-nav">
                 <div class="nav-section">Tienda</div>
-                <a href="#" class="nav-item {% if active == 'catalogo' %}active{% endif %}">
-                    <i class="ph ph-storefront"></i> Catálogo de Productos
+                <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="nav-item {% if active == 'catalogo' %}active{% endif %}">
+                    <i class="ph ph-storefront"></i> Catalogo de Productos
                 </a>
 
                 <div class="nav-section">Mis Compras</div>
@@ -38,7 +39,7 @@
             </nav>
 
             <a href="#" class="btn-logout">
-                <i class="ph ph-sign-out"></i> Cerrar Sesión
+                <i class="ph ph-sign-out"></i> Cerrar Sesion
             </a>
         </aside>
 
@@ -52,7 +53,7 @@
                     <span class="page-title">{% block page_title %}#{% endblock %}</span>
                 </div>
                 <div class="topbar-right">
-                    <span class="date-chip">#</span>
+                    <span class="date-chip">Cliente</span>
                     <div class="icon-btn">
                         <i class="ph ph-bell"></i>
                     </div>
@@ -82,4 +83,5 @@
     </div>
 
 </body>
+
 </html>

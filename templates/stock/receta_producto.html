@@ -1,0 +1,127 @@
+{% extends "layout_emp.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/receta.css') }}">
+{% endblock %}
+
+{% block page_title %}RECETA DEL PRODUCTO{% endblock %}
+
+{% block container %}
+<section class="recipe-page fade-up">
+    <div class="recipe-header">
+        <div>
+            <p class="section-eyebrow">Produccion</p>
+            <h1 class="section-title">Receta de {{ producto.nombre }}</h1>
+            <p class="section-copy">Define la merma y los materiales que requiere este producto terminado.</p>
+        </div>
+
+        <div class="detail-actions">
+            <a href="{{ url_for('stock_empleado.stock') }}" class="btn btn-blue">
+                <i class="ph ph-arrow-left"></i> Volver a stock
+            </a>
+            <a href="{{ url_for('stock_empleado.editar_stock', producto_id=producto.id) }}" class="btn btn-green">
+                <i class="ph ph-pencil-simple"></i> Modificar producto
+            </a>
+        </div>
+    </div>
+
+    <div class="recipe-grid">
+        <div class="recipe-card">
+            <div class="recipe-card-head">
+                <h2>Configuracion general</h2>
+                <span class="stock-status {% if receta and receta.Activa %}is-active{% else %}is-inactive{% endif %}">
+                    {{ "Activa" if receta and receta.Activa else "Sin receta" }}
+                </span>
+            </div>
+
+            <form method="post" class="recipe-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="accion" value="guardar_receta">
+
+                <div class="recipe-form-grid">
+                    <div class="form-group">
+                        <label for="merma">Merma</label>
+                        <input id="merma" name="merma" type="number" min="0" step="0.01" class="form-input" value="{{ receta.Merma if receta else '0.00' }}" required>
+                    </div>
+                </div>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn btn-green">
+                        <i class="ph ph-floppy-disk"></i> Guardar receta
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="recipe-card">
+            <div class="recipe-card-head">
+                <h2>Agregar material</h2>
+                <span class="recipe-note">Se usa la receta actual del producto</span>
+            </div>
+
+            <form method="post" class="recipe-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="accion" value="agregar_detalle">
+
+                <div class="recipe-form-grid">
+                    <div class="form-group stock-form-wide">
+                        <label for="materia_prima_id">Materia prima</label>
+                        <select id="materia_prima_id" name="materia_prima_id" class="form-input" required>
+                            <option value="">Selecciona una materia prima</option>
+                            {% for materia in materias_primas %}
+                            <option value="{{ materia.IdMateriaPrima }}" {% if detalle_form.materia_prima_id|string == materia.IdMateriaPrima|string %}selected{% endif %}>
+                                {{ materia.Nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cantidad_requerida">Cantidad requerida</label>
+                        <input id="cantidad_requerida" name="cantidad_requerida" type="number" min="0.01" step="0.01" class="form-input" value="{{ detalle_form.cantidad }}" required>
+                    </div>
+                </div>
+
+                <div class="edit-actions">
+                    <button type="submit" class="btn btn-blue">
+                        <i class="ph ph-plus-circle"></i> Agregar a receta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="recipe-card">
+        <div class="recipe-card-head">
+            <h2>Detalle de receta</h2>
+            <span class="recipe-note">{{ detalles|length }} materiales</span>
+        </div>
+
+        <div class="recipe-detail-list">
+            {% for detalle in detalles %}
+            <div class="recipe-detail-item">
+                <div>
+                    <strong>{{ detalle.materia_prima }}</strong>
+                    <span>{{ detalle.cantidad }} {{ detalle.unidad }}</span>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="accion" value="eliminar_detalle">
+                    <input type="hidden" name="detalle_id" value="{{ detalle.id }}">
+                    <button type="submit" class="btn btn-red">
+                        <i class="ph ph-trash"></i> Quitar
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="ph ph-blueprint"></i>
+                <h3>La receta aun no tiene materiales</h3>
+                <p>Guarda la receta general y despues agrega las materias primas necesarias.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
