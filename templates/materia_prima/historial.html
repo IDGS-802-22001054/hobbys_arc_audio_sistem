@@ -25,17 +25,17 @@
             {% for m in movimientos %}
             <tr>
                 <td>{{ m.FechaMovimiento.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td style="color: var(--text); font-weight: 700;">{{ m.material.Nombre }}</td>
+                <td style="color: var(--text); font-weight: 700;">{{ m.materia_prima.Nombre if m.materia_prima else 'Sin material' }}</td>
                 <td>
                     <span class="badge {{ 'bg-success' if m.TipoMovimiento == 'ENTRADA' else 'bg-danger' }}">
                         {{ m.TipoMovimiento }}
                     </span>
                 </td>
-                <td>{{ m.Cantidad }} {{ m.material.unidad.Abreviatura }}</td>
+                <td>{{ m.Cantidad }} {{ m.materia_prima.unidad_medida.Abreviatura if m.materia_prima and m.materia_prima.unidad_medida else '' }}</td>
                 <td>{{ m.Motivo }}</td>
                 <td>
                     <div style="font-size: 12px; color: var(--text);">
-                        {{ m.usuario.datos_personales.Nombre }} {{ m.usuario.datos_personales.Apellidos }}
+                        {{ m.usuario.persona.Nombre if m.usuario and m.usuario.persona else '' }} {{ m.usuario.persona.Apellidos if m.usuario and m.usuario.persona else '' }}
                     </div>
                     <div style="font-size: 10px; color: var(--muted2);">
                         ID: {{ m.usuario.Identificador }}

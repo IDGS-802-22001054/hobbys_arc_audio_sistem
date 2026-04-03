@@ -70,7 +70,7 @@
                     {{ mp.StockActual }}
                 </td>
 
-                <td>{{ mp.unidad.Nombre }}</td> 
+                <td>{{ mp.unidad_medida.Nombre if mp.unidad_medida else 'Sin unidad' }}</td> 
                 
                 <td>${{ mp.PrecioUnitario }}</td>
 

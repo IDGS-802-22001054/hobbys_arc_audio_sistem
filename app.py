@@ -4,10 +4,10 @@ from flask_wtf.csrf import CSRFProtect
 
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.catalogo_cliente.routes import obtener_contexto_catalogo
+from blueprints.compras import compras_bp
+from blueprints.materia_prima import materia_prima_bp
+from blueprints.proveedores import proveedores_bp
 from blueprints.stock_empleado import stock_empleado_bp
-from proveedores import proveedores_bp
-from materia_prima import materia_prima_bp
-from compras import compras_bp
 from config import DevelopmentConfig
 from models import db
 from flask import session
@@ -35,6 +35,7 @@ def registrar_manejadores_error(aplicacion):
     def pagina_no_encontrada(error):
         return render_template("index.html"), 404
 
+
 def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
@@ -43,18 +44,20 @@ def registrar_context_processors(aplicacion):
         alertas = []
 
         if es_autorizado:
-            query = text("""
+            query = text(
+                """
                 SELECT IdAlertaSistema, Mensaje, ReferenciaId
                 FROM alertasistema
                 WHERE Leida = 0 AND TipoAlerta = 'STOCK_BAJO'
                 ORDER BY FechaGeneracion DESC
-            """)
+            """
+            )
             alertas = db.session.execute(query).fetchall()
 
         return dict(
             alertas_criticas=alertas,
             total_alertas=len(alertas),
-            puede_ver_alertas=es_autorizado
+            puede_ver_alertas=es_autorizado,
         )
 
 
@@ -69,6 +72,7 @@ def crear_app():
     inicializar_base_datos(aplicacion)
     registrar_blueprints(aplicacion)
     registrar_manejadores_error(aplicacion)
+    registrar_context_processors(aplicacion)
 
     return aplicacion
 

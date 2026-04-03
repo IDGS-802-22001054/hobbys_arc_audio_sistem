@@ -96,8 +96,8 @@ def registrar_movimiento():
 @materia_prima_bp.route('/inventario/historial')
 def historial():
     movimientos = MovimientoMateriaPrima.query.options(
-        joinedload(MovimientoMateriaPrima.usuario).joinedload(Usuario.datos_personales),
-        joinedload(MovimientoMateriaPrima.material)
+        joinedload(MovimientoMateriaPrima.usuario).joinedload(Usuario.persona),
+        joinedload(MovimientoMateriaPrima.materia_prima).joinedload(MateriaPrima.unidad_medida)
     ).order_by(MovimientoMateriaPrima.FechaMovimiento.desc()).all()
     
     return render_template('materia_prima/historial.html', movimientos=movimientos)
@@ -153,7 +153,7 @@ def registrar():
         except Exception as e:
             db.session.rollback()
             flash(f"Error al registrar: {str(e)}", "red")
-            return redirect(url_for('materia_prima.agregar'))
+            return redirect(url_for('materia_prima.registrar'))
 
     proveedores = Proveedor.query.filter_by(Activo=True).all()
     return render_template('materia_prima/agregar.html', proveedores=proveedores)
