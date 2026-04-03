@@ -1,0 +1,49 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}EDITAR PROVEEDOR{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <h2>MODIFICAR DATOS: {{ p.NombreEmpresa }}</h2>
+    <a href="{{ url_for('proveedores.listar') }}" class="btn" style="background: var(--surface); color: var(--muted);">
+        <i class="ph ph-arrow-left"></i> CANCELAR
+    </a>
+</div>
+
+<div class="table-wrapper fade-up" style="max-width: 850px; margin: 0 auto;">
+    <form action="{{ url_for('proveedores.editar', id=p.IdProveedor) }}" method="POST">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label>Nombre de la Empresa</label>
+                <input type="text" name="nombre" class="form-input" value="{{ p.NombreEmpresa }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>RFC (No editable)</label>
+                <input type="text" class="form-input" value="{{ p.RFC }}" readonly style="opacity: 0.6; cursor: not-allowed;">
+            </div>
+
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="text" name="telefono" class="form-input" value="{{ p.Telefono }}">
+            </div>
+
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" name="correo" class="form-input" value="{{ p.CorreoElectronico }}">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <label>Dirección</label>
+            <textarea name="direccion" class="form-input" rows="3" style="resize: none;">{{ p.Direccion }}</textarea>
+        </div>
+
+        <div style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 12px;">
+            <button type="submit" class="btn-add" style="border: none; cursor: pointer; background: var(--yellow); color: var(--darker);">
+                <i class="ph ph-check-square"></i> ACTUALIZAR INFORMACIÓN
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
