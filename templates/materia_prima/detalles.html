@@ -49,7 +49,7 @@
         <div style="background: var(--bg); padding: 25px; border-radius: 20px; border: 2px solid {{ 'var(--red)' if mp.StockActual <= mp.StockMinimo else 'var(--border)' }}; text-align: center;">
             <label style="color: var(--muted2); font-size: 12px; font-weight: 700;">EXISTENCIAS ACTUALES</label>
             <h1 style="font-size: 48px; margin: 10px 0; color: {{ 'var(--red)' if mp.StockActual <= mp.StockMinimo else 'white' }};">
-                {{ mp.StockActual }} <small style="font-size: 18px;">{{ mp.unidad.Abreviatura }}</small>
+                {{ mp.StockActual }} <small style="font-size: 18px;">{{ mp.unidad_medida.Abreviatura if mp.unidad_medida else '' }}</small>
             </h1>
             
             {% if mp.StockActual <= mp.StockMinimo %}
@@ -57,7 +57,7 @@
                     <i class="ph ph-warning"></i> BAJO STOCK MÍNIMO ({{ mp.StockMinimo }})
                 </div>
             {% else %}
-                <p style="color: var(--muted2); font-size: 12px;">Stock mínimo: {{ mp.StockMinimo }} {{ mp.unidad.Abreviatura }}</p>
+                <p style="color: var(--muted2); font-size: 12px;">Stock mínimo: {{ mp.StockMinimo }} {{ mp.unidad_medida.Abreviatura if mp.unidad_medida else '' }}</p>
             {% endif %}
         </div>
 
