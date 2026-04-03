@@ -1,5 +1,9 @@
 {% extends "layout_emp.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stock.css') }}">
+{% endblock %}
+
 {% block page_title %}STOCK{% endblock %}
 
 {% block container %}

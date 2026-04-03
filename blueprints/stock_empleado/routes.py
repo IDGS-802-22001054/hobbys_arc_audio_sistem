@@ -194,7 +194,7 @@ def stock():
     ]
 
     return render_template(
-        "stock.html",
+        "stock/stock.html",
         productos=productos_serializados,
         busqueda=busqueda,
         **_contexto_base(),
@@ -205,7 +205,7 @@ def stock():
 def detalle_stock(producto_id):
     producto = db.get_or_404(ProductoTerminado, producto_id)
     return render_template(
-        "stock_detalle.html",
+        "stock/stock_detalle.html",
         producto=_serializar_producto(producto),
         **_contexto_base(),
     )
@@ -231,7 +231,7 @@ def nuevo_stock():
                 }
             )
             return render_template(
-                "stock_editar.html",
+                "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
                 **_contexto_base(),
@@ -251,7 +251,7 @@ def nuevo_stock():
                 }
             )
             return render_template(
-                "stock_editar.html",
+                "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
                 **_contexto_base(),
@@ -280,7 +280,7 @@ def nuevo_stock():
                 }
             )
             return render_template(
-                "stock_editar.html",
+                "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
                 **_contexto_base(),
@@ -298,7 +298,7 @@ def nuevo_stock():
             flash("No fue posible crear el producto.")
 
     return render_template(
-        "stock_editar.html",
+        "stock/stock_editar.html",
         producto=producto_form,
         modo="nuevo",
         **_contexto_base(),
@@ -320,7 +320,7 @@ def editar_stock(producto_id):
         except (TypeError, ValueError, InvalidOperation):
             flash("Los valores numericos enviados no son validos.")
             return render_template(
-                "stock_editar.html",
+                "stock/stock_editar.html",
                 producto=_serializar_producto(producto),
                 modo="editar",
                 **_contexto_base(),
@@ -335,7 +335,7 @@ def editar_stock(producto_id):
             flash("No fue posible actualizar el producto.")
 
     return render_template(
-        "stock_editar.html",
+        "stock/stock_editar.html",
         producto=_serializar_producto(producto),
         modo="editar",
         **_contexto_base(),
@@ -355,7 +355,7 @@ def receta_producto(producto_id):
             if usuario is None:
                 flash("No hay un usuario activo para registrar la receta.")
                 return render_template(
-                    "receta_producto.html",
+                    "stock/receta_producto.html",
                     **_obtener_contexto_receta(producto, receta),
                 )
 
@@ -364,7 +364,7 @@ def receta_producto(producto_id):
             except (InvalidOperation, TypeError, ValueError):
                 flash("La merma enviada no es valida.")
                 return render_template(
-                    "receta_producto.html",
+                    "stock/receta_producto.html",
                     **_obtener_contexto_receta(producto, receta),
                 )
 
@@ -401,7 +401,7 @@ def receta_producto(producto_id):
             if receta is None:
                 flash("Primero debes guardar la receta general del producto.")
                 return render_template(
-                    "receta_producto.html",
+                    "stock/receta_producto.html",
                     **_obtener_contexto_receta(
                         producto,
                         receta,
@@ -421,7 +421,7 @@ def receta_producto(producto_id):
             if not materia_prima_id or cantidad is None or cantidad <= 0:
                 flash("Selecciona una materia prima y una cantidad valida.")
                 return render_template(
-                    "receta_producto.html",
+                    "stock/receta_producto.html",
                     **_obtener_contexto_receta(
                         producto,
                         receta,
@@ -475,7 +475,7 @@ def receta_producto(producto_id):
                     flash("No fue posible eliminar el detalle.")
 
     return render_template(
-        "receta_producto.html",
+        "stock/receta_producto.html",
         **_obtener_contexto_receta(producto, receta),
     )
 

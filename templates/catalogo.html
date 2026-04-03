@@ -1,5 +1,9 @@
 {% extends "layout_cli.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/catalogo.css') }}">
+{% endblock %}
+
 {% block page_title %}CATALOGO DE PRODUCTOS{% endblock %}
 
 {% block container %}

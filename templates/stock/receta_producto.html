@@ -1,5 +1,9 @@
 {% extends "layout_emp.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/receta.css') }}">
+{% endblock %}
+
 {% block page_title %}RECETA DEL PRODUCTO{% endblock %}
 
 {% block container %}

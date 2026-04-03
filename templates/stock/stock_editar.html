@@ -1,5 +1,9 @@
 {% extends "layout_emp.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stock.css') }}">
+{% endblock %}
+
 {% block page_title %}{{ "NUEVO PRODUCTO" if modo == "nuevo" else "EDITAR STOCK" }}{% endblock %}
 
 {% block container %}
