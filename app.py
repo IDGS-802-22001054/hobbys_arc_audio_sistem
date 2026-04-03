@@ -4,6 +4,7 @@ from flask_wtf.csrf import CSRFProtect
 
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.catalogo_cliente.routes import obtener_contexto_catalogo
+from blueprints.stock_empleado import stock_empleado_bp
 from config import DevelopmentConfig
 from models import db
 
@@ -18,6 +19,7 @@ def inicializar_base_datos(aplicacion):
 
 def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(catalogo_cliente_bp)
+    aplicacion.register_blueprint(stock_empleado_bp)
 
 
 def registrar_manejadores_error(aplicacion):
