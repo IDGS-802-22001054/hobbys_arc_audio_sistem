@@ -1,0 +1,69 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}COMPRAS{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <h2>GESTIÓN DE COMPRAS</h2>
+    
+    <div class="header-tools">
+        <form action="{{ url_for('compras.listar') }}" method="GET" class="search-container">
+            <input type="text" name="search" placeholder="Buscar Compra" value="{{ search or '' }}">
+            <button type="submit" style="background:none; border:none; cursor:pointer;">
+                <i class="ph ph-magnifying-glass"></i>
+            </button>
+        </form>
+        
+        <a href="#" class="btn-add">
+            + NUEVA COMPRA
+        </a>
+    </div>
+</div>
+
+<div class="table-wrapper fade-up" style="animation-delay: 0.1s;">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>FECHA / HORA</th>
+                <th>PROVEEDOR</th>
+                <th>TOTAL</th>
+                <th>OBSERVACIONES</th>
+                <th style="text-align: center;">ACCIONES</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in compras %}
+            <tr>
+                <td>#CP-{{ c.IdCompraMateriaPrima }}</td>
+                <td style="color: var(--text)">
+                    {{ c.FechaCompra.strftime('%d/%m/%Y') }}
+                    <span style="color: var(--muted2); font-size: 11px; margin-left: 5px;">
+                        {{ c.FechaCompra.strftime('%H:%M') }}
+                    </span>
+                </td>
+                <td>{{ c.proveedor.NombreEmpresa if c.proveedor else 'Sin Proveedor' }}</td>
+                <td style="font-weight: bold; color: var(--blue);">
+                    $ {{ "{:,.2f}".format(c.TotalCompra) }}
+                </td>
+                <td style="font-size: 11px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ c.Observaciones or '---' }}
+                </td>
+                <td class="actions-cell" style="text-align: center;">
+                    <a href="{{ url_for('compras.ver_detalle', id=c.IdCompraMateriaPrima) }}" class="btn-square bg-view" title="Ver Detalles">
+                        <i class="ph ph-eye"></i>
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--muted2);">
+                    <i class="ph ph-shopping-cart" style="font-size: 30px; display: block; margin-bottom: 10px;"></i>
+                    No se han registrado compras.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

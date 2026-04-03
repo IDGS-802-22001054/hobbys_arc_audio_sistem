@@ -1,3 +1,6 @@
+class Config(object):
+    SECRET_KEY = 'Clave nueva'
+    SESSION_COOKIE_SECURE = False
 import os
 
 

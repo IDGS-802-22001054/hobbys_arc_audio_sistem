@@ -1,0 +1,49 @@
+{% extends "layout_emp.html" %}
+{% block page_title %}HISTORIAL MP{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <h2>HISTORIAL DE MOVIMIENTOS</h2>
+    <a href="{{ url_for('materia_prima.listar') }}" class="btn" style="background: var(--surface); color: var(--muted);">
+        <i class="ph ph-arrow-left"></i> VOLVER AL INVENTARIO
+    </a>
+</div>
+
+<div class="table-wrapper fade-up">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>FECHA</th>
+                <th>MATERIAL</th>
+                <th>TIPO</th>
+                <th>CANTIDAD</th>
+                <th>MOTIVO</th>
+                <th>RESPONSABLE</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in movimientos %}
+            <tr>
+                <td>{{ m.FechaMovimiento.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td style="color: var(--text); font-weight: 700;">{{ m.material.Nombre }}</td>
+                <td>
+                    <span class="badge {{ 'bg-success' if m.TipoMovimiento == 'ENTRADA' else 'bg-danger' }}">
+                        {{ m.TipoMovimiento }}
+                    </span>
+                </td>
+                <td>{{ m.Cantidad }} {{ m.material.unidad.Abreviatura }}</td>
+                <td>{{ m.Motivo }}</td>
+                <td>
+                    <div style="font-size: 12px; color: var(--text);">
+                        {{ m.usuario.datos_personales.Nombre }} {{ m.usuario.datos_personales.Apellidos }}
+                    </div>
+                    <div style="font-size: 10px; color: var(--muted2);">
+                        ID: {{ m.usuario.Identificador }}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
