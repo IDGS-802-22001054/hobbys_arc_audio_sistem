@@ -1,0 +1,117 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}Detalle Empleado{% endblock %}
+
+{% block container %}
+
+<div class="page-header fade-up">
+    <h2 class="page-header-title">DETALLE DE EMPLEADO</h2>
+    <div class="page-header-actions">
+        <a href="{{ url_for('empleados.editar_empleado', id=e.IdEmpleado) }}" class="btn btn-blue">
+            <i class="ph ph-pencil-simple"></i> Editar
+        </a>
+        <a href="{{ url_for('empleados.empleados') }}" class="btn btn-outline">
+            <i class="ph ph-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="detail-grid fade-up" style="animation-delay:0.07s">
+
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div class="detail-avatar">
+                {% if e.Foto %}
+                <img src="{{ e.Foto }}" alt="{{ e.Nombre }}">
+                {% else %}
+                <i class="ph ph-user"></i>
+                {% endif %}
+            </div>
+            <div>
+                <div class="detail-fullname">{{ e.Nombre }} {{ e.Apellidos }}</div>
+                <div class="detail-sub">
+                    {% if e.NombreRol %}
+                    {% set rol = e.NombreRol | lower %}
+                    {% if 'admin' in rol %}
+                    <span class="role-badge role-admin"><i class="ph ph-shield-check"></i> {{ e.NombreRol }}</span>
+                    {% elif 'vend' in rol %}
+                    <span class="role-badge role-vendedor"><i class="ph ph-tag"></i> {{ e.NombreRol }}</span>
+                    {% elif 'alm' in rol or 'prod' in rol %}
+                    <span class="role-badge role-almacen"><i class="ph ph-warehouse"></i> {{ e.NombreRol }}</span>
+                    {% else %}
+                    <span class="role-badge role-otro"><i class="ph ph-circles-three"></i> {{ e.NombreRol }}</span>
+                    {% endif %}
+                    {% endif %}
+                    {% if e.Activo %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Activo</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> Inactivo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-identification-card"></i> Datos Personales</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">ID Empleado</span>
+                <span class="detail-val td-mono">{{ e.IdEmpleado }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Correo</span>
+                <span class="detail-val td-mono">{{ e.CorreoElectronico }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Teléfono</span>
+                <span class="detail-val">{{ e.Telefono or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Dirección</span>
+                <span class="detail-val">{{ e.Direccion or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-briefcase"></i> Datos de Empleado</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">Puesto</span>
+                <span class="detail-val">
+                    {% if e.Puesto %}<span class="puesto-chip">{{ e.Puesto }}</span>{% else %}—{% endif %}
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Salario</span>
+                <span class="detail-val td-salario">
+                    {% if e.Salario is not none %}${{ "{:,.2f}".format(e.Salario) }}{% else %}—{% endif %}
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Fecha Ingreso</span>
+                <span class="detail-val">{{ e.FechaIngreso.strftime('%d/%m/%Y') if e.FechaIngreso else '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-lock-key"></i> Acceso al Sistema</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">Usuario</span>
+                <span class="detail-val td-mono">{{ e.Identificador or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Contraseña</span>
+                <span class="detail-val td-mono">
+                    {% if e.Identificador %} •••••••• {% else %} — {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

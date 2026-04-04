@@ -1,0 +1,88 @@
+{% extends "layout_cli.html" %}
+
+{% block page_title %}Mi Perfil{% endblock %}
+
+{% block container %}
+
+<div class="page-header fade-up">
+    <h2 class="page-header-title">MI PERFIL</h2>
+    <div class="page-header-actions">
+        <a href="{{ url_for('clientes.editar_perfil', id=current_user.IdUsuario) }}" class="btn btn-blue">
+            <i class="ph ph-pencil-simple"></i> Editar
+        </a>
+        <a href="{{ url_for('catalogo.catalogo') }}" class="btn btn-outline">
+            <i class="ph ph-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="detail-grid fade-up" style="animation-delay:0.07s">
+
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div class="detail-avatar">
+                {% if persona.Foto %}
+                <img src="{{ persona.Foto }}" alt="{{ persona.Nombre }}">
+                {% else %}
+                <i class="ph ph-user"></i>
+                {% endif %}
+            </div>
+            <div>
+                <div class="detail-fullname">{{ persona.Nombre }} {{ persona.Apellidos }}</div>
+                <div class="detail-sub">
+                    <span class="role-badge role-otro">
+                        <i class="ph ph-user-circle"></i> {{ current_user.rol.Nombre }}
+                    </span>
+                    {% if persona.Activo %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Activo</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> Inactivo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-identification-card"></i> Datos Personales</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">ID Cliente</span>
+                <span class="detail-val td-mono">{{ cliente.IdCliente }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Correo</span>
+                <span class="detail-val td-mono">{{ persona.CorreoElectronico }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Teléfono</span>
+                <span class="detail-val">{{ persona.Telefono or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Dirección</span>
+                <span class="detail-val">{{ persona.Direccion or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Miembro desde</span>
+                <span class="detail-val">{{ persona.FechaRegistro.strftime('%d/%m/%Y') }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-lock-key"></i> Acceso al Sistema</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">Usuario</span>
+                <span class="detail-val td-mono">{{ current_user.Identificador or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Contraseña</span>
+                <span class="detail-val td-mono">••••••••</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

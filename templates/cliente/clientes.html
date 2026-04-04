@@ -1,0 +1,108 @@
+{% extends "layout_emp.html" %}
+{% block page_title %}Gestión de Clientes{% endblock %}
+{% block container %}
+
+<div class="page-header fade-up">
+    <h2 class="page-header-title">GESTIÓN DE CLIENTES</h2>
+    <form method="GET" action="{{ url_for('clientes.clientes') }}">
+        <div class="search-wrap">
+            <input type="text" name="q" class="search-input" placeholder="Buscar cliente..." value="{{ q }}">
+            <i class="ph ph-magnifying-glass"></i>
+        </div>
+    </form>
+</div>
+
+<div class="table-card fade-up" style="animation-delay:0.07s">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>Apellidos</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Compra Online</th>
+                <th>Estatus</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if clientes %}
+            {% for c in clientes %}
+            <tr>
+                <td class="td-mono">{{ c.IdCliente }}</td>
+
+                <td>
+                    <div class="td-photo-placeholder">
+                        {% if c.Foto %}
+                        <img src="{{ c.Foto }}" alt="{{ c.Nombre }}">
+                        {% else %}
+                        <i class="ph ph-user"></i>
+                        {% endif %}
+                    </div>
+                </td>
+
+                <td>{{ c.Nombre }}</td>
+
+                <td>{{ c.Apellidos }}</td>
+
+                <td class="td-mono td-email">{{ c.CorreoElectronico }}</td>
+
+                <td class="td-mono">{{ c.Telefono or '—' }}</td>
+
+                <td>
+                    {% if c.PermiteCompraOnline %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Sí</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> No</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if c.Activo %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Activo</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> Inactivo</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <div class="action-btns">
+                        <a href="{{ url_for('clientes.ver_cliente', id=c.IdCliente) }}" class="action-btn view"
+                            title="Ver">
+                            <i class="ph ph-eye"></i>
+                        </a>
+                        {% if c.Activo %}
+                        <a href="{{ url_for('clientes.eliminar_cliente', id=c.IdCliente) }}"
+                            class="action-btn btn-red btn-sm">
+                            <i class="ph ph-prohibit"></i>
+                        </a>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('clientes.activar_cliente', id=c.IdCliente) }}"
+                            style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="action-btn btn-green btn-sm">
+                                <i class="ph ph-check-circle"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="9">
+                    <div class="empty-state">
+                        <i class="ph ph-users"></i>
+                        <p>No hay clientes registrados.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

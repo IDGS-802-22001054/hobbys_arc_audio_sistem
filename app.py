@@ -1,20 +1,33 @@
 from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
-
+from flask_login import LoginManager
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.catalogo_cliente.routes import obtener_contexto_catalogo
 from blueprints.compras import compras_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
 from blueprints.stock_empleado import stock_empleado_bp
+from dashboard.routes_dashboard import dashboard_bp
+from clientes.routes_cliente import clientes_bp
+from auth.routes_auth import auth_bp
+from empleados.routes_empleado import empleados_bp
 from config import DevelopmentConfig
-from models import db
+from models import db, Usuario
 from flask import session
 from sqlalchemy import text
 
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'auth.login'
+login_manager.login_message = 'Inicia sesión para continuar'
+login_manager.login_message_category = 'warning'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(Usuario, int(user_id))
 
 
 def inicializar_base_datos(aplicacion):
@@ -28,6 +41,11 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(proveedores_bp)
     aplicacion.register_blueprint(materia_prima_bp)
     aplicacion.register_blueprint(compras_bp)
+    aplicacion.register_blueprint(dashboard_bp)
+    aplicacion.register_blueprint(auth_bp)
+    aplicacion.register_blueprint(empleados_bp)
+    aplicacion.register_blueprint(clientes_bp)
+    aplicacion.register_blueprint(catalogo_bp)
 
 
 def registrar_manejadores_error(aplicacion):
