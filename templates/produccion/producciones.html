@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block page_title %}GESTIÓN DE PRODUCCIÓN{% endblock %}
+
+{% block container %}
+
+<!-- ── KPIs ── -->
+<div class="prod-kpis fade-up">
+    <div class="prod-kpi">
+        <i class="ph ph-check-square" style="color:var(--blue)"></i>
+        <div>
+            <span class="prod-kpi-val">{{ aprobadas | default(0) }}</span>
+            <span class="prod-kpi-lbl">Aprobadas para fabricar</span>
+        </div>
+    </div>
+    <div class="prod-kpi">
+        <i class="ph ph-arrows-clockwise" style="color:var(--yellow)"></i>
+        <div>
+            <span class="prod-kpi-val">{{ en_proceso | default(0) }}</span>
+            <span class="prod-kpi-lbl">En proceso</span>
+        </div>
+    </div>
+    <div class="prod-kpi">
+        <i class="ph ph-bag" style="color:var(--green)"></i>
+        <div>
+            <span class="prod-kpi-val">{{ completadas | default(0) }}</span>
+            <span class="prod-kpi-lbl">Completadas hoy</span>
+        </div>
+    </div>
+    <div class="prod-kpi">
+        <i class="ph ph-warning" style="color:var(--red)"></i>
+        <div>
+            <span class="prod-kpi-val">{{ total_defectuosas | default(0) }}</span>
+            <span class="prod-kpi-lbl">Piezas defectuosas</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── KANBAN ── -->
+<div class="kanban fade-up">
+
+    <!-- COLUMNA 1: Aprobadas para fabricar -->
+    <div class="kanban-col">
+        <div class="kanban-col-header kanban-blue">
+            <i class="ph ph-check-square"></i>
+            <span>Aprobadas para fabricar</span>
+            <span class="kanban-count">{{ producciones_aprobadas | length }}</span>
+        </div>
+        <div class="kanban-body">
+            {% for prod in producciones_aprobadas %}
+            <div class="kanban-card fade-up">
+                <div class="kanban-card-top">
+                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
+                </div>
+                <div class="kanban-card-rows">
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Solicitud:</span>
+                        <span class="kanban-card-val">#{{ prod.IdSolicitudProduccion or '—' }}</span>
+                    </div>
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Cantidad:</span>
+                        <span class="kanban-card-val">{{ prod.CantidadPlaneada }} pzas</span>
+                    </div>
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Registrado por:</span>
+                        <span class="kanban-card-val">{{ prod.usuario_registro.persona.Nombre }}</span>
+                    </div>
+                </div>
+                <div class="kanban-card-actions">
+                    <form method="POST" action="{{ url_for('produccion.iniciar', id=prod.IdProduccion) }}">
+                        <button class="btn btn-blue" type="submit">
+                            <i class="ph ph-play"></i> Iniciar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="kanban-empty">
+                <i class="ph ph-tray"></i>
+                <p>Sin órdenes aprobadas</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- COLUMNA 2: En Proceso -->
+    <div class="kanban-col">
+        <div class="kanban-col-header kanban-yellow">
+            <i class="ph ph-arrows-clockwise"></i>
+            <span>En proceso</span>
+            <span class="kanban-count">{{ producciones_proceso | length }}</span>
+        </div>
+        <div class="kanban-body">
+            {% for prod in producciones_proceso %}
+            <div class="kanban-card fade-up">
+                <div class="kanban-card-top">
+                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
+                </div>
+                <div class="kanban-card-rows">
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Planeadas:</span>
+                        <span class="kanban-card-val">{{ prod.CantidadPlaneada }} pzas</span>
+                    </div>
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Inicio:</span>
+                        <span class="kanban-card-val">
+                            {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '—' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="kanban-card-actions kanban-card-actions--col">
+                    <a class="btn btn-red" href="{{ url_for('produccion.registrar_defectos', id=prod.IdProduccion) }}">
+                        <i class="ph ph-warning"></i> Registrar defectos
+                    </a>
+                    <a class="btn btn-green" href="{{ url_for('produccion.finalizar', id=prod.IdProduccion) }}">
+                        <i class="ph ph-check-circle"></i> Finalizar
+                    </a>
+                    <form method="POST" action="{{ url_for('produccion.cancelar', id=prod.IdProduccion) }}"
+                        onsubmit="return confirm('¿Cancelar esta producción? Se revertirá el descuento de materia prima.')">
+                        <button class="btn-outline-danger" type="submit">
+                            <i class="ph ph-x-circle"></i> Cancelar
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="kanban-empty">
+                <i class="ph ph-arrows-clockwise"></i>
+                <p>Ninguna en proceso</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- COLUMNA 3: Completadas -->
+    <div class="kanban-col">
+        <div class="kanban-col-header kanban-green">
+            <i class="ph ph-bag-simple-check"></i>
+            <span>Completadas</span>
+            <span class="kanban-count">{{ producciones_completadas | length }}</span>
+        </div>
+        <div class="kanban-body">
+            {% for prod in producciones_completadas %}
+            <div class="kanban-card kanban-card--done fade-up">
+                <div class="kanban-card-top">
+                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
+                </div>
+                <div class="kanban-card-rows">
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Fabricadas:</span>
+                        <span class="kanban-card-val good">{{ prod.CantidadFabricada }} pzas</span>
+                    </div>
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Defectuosas:</span>
+                        <span class="kanban-card-val bad">{{ prod.CantidadDefectuosa }} pzas</span>
+                    </div>
+                    <div class="kanban-card-row">
+                        <span class="kanban-card-lbl">Finalizado:</span>
+                        <span class="kanban-card-val">
+                            {{ prod.FechaFin.strftime('%d/%m/%Y %H:%M') if prod.FechaFin else '—' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="kanban-card-actions">
+                    <a class="btn btn-outline" href="{{ url_for('produccion.detalle', id=prod.IdProduccion) }}">
+                        <i class="ph ph-eye"></i> Ver detalle
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="kanban-empty">
+                <i class="ph ph-bag-simple-check"></i>
+                <p>Sin completadas hoy</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

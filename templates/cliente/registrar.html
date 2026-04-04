@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hobbys Car Audio – Crear Cuenta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+
+<body>
+
+    <div class="reg-bg">
+        <div class="reg-wrap">
+            <div class="reg-card">
+                <div class="reg-card-inner">
+                        <div class="login-logo">
+                            <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
+                        </div>
+                        <div class="topbar"></div>
+                        <div class="login-title">CREAR CUENTA</div>
+                        <div class="login-desc">Ingresa tus datos personales para continuar.</div>
+
+                    <form method="POST" action="{{ url_for('clientes.nuevo_cliente') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+                        <div class="sec-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>
+                            Información personal
+                        </div>
+
+                        <div class="form-row">
+                            <div class="fg">
+                                <label for="nombre">Nombre(s):</label>
+                                <input class="fi" type="text" id="nombre" name="nombre" placeholder="Ingrese su nombre"
+                                    autocomplete="given-name" required>
+                            </div>
+                            <div class="fg">
+                                <label for="apellidos">Apellidos:</label>
+                                <input class="fi" type="text" id="apellidos" name="apellidos"
+                                    placeholder="Ingrese sus apellidos" autocomplete="family-name" required>
+                            </div>
+                        </div>
+
+                        <div class="fg">
+                            <label for="correo">Correo electrónico: </label>
+                            <div class="input-icon-wrap">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path
+                                        d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                    <polyline points="22,6 12,13 2,6" />
+                                </svg>
+                                <input class="fi fi-icon" type="email" id="correo" name="correo"
+                                    placeholder="Ingrese un correo válido" autocomplete="email" required>
+                            </div>
+                        </div>
+
+                        <div class="fg">
+                            <label for="identificador">Nombre de Usuario:</label>
+                            <div class="input-icon-wrap">
+                                <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                                <input class="fi fi-icon" type="text" id="identificador" name="identificador"
+                                    placeholder="Ingrese un nombre de usuario" autocomplete="username" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="fg">
+                                <label for="pass-reg1">Contraseña: </label>
+                                <div class="pass-wrap">
+                                    <input class="fi" type="password" id="pass-reg1" name="password"
+                                        placeholder="••••••••" autocomplete="new-password" required>
+                                    <input type="checkbox" id="eye-reg1" class="eye-toggle">
+                                    <label for="eye-reg1" class="eye-btn" aria-label="Mostrar contraseña">
+                                        <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path
+                                                d="M17.94 17.94A10.94 10.94 0 0112 19C5 19 1 12 1 12a18.1 18.1 0 015.06-5.94M9.9 4.24A10.33 10.33 0 0112 4c7 0 11 8 11 8a18.1 18.1 0 01-2.16 3.19M1 1l22 22" />
+                                        </svg>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="fg">
+                                <label for="pass-reg2">Confirmar contraseña: </label>
+                                <div class="pass-wrap">
+                                    <input class="fi" type="password" id="pass-reg2" name="password_confirm"
+                                        placeholder="••••••••" autocomplete="new-password" required>
+                                    <input type="checkbox" id="eye-reg2" class="eye-toggle">
+                                    <label for="eye-reg2" class="eye-btn" aria-label="Mostrar contraseña">
+                                        <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                        <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path
+                                                d="M17.94 17.94A10.94 10.94 0 0112 19C5 19 1 12 1 12a18.1 18.1 0 015.06-5.94M9.9 4.24A10.33 10.33 0 0112 4c7 0 11 8 11 8a18.1 18.1 0 01-2.16 3.19M1 1l22 22" />
+                                        </svg>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hint-row">
+                            <span class="hint-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Mínimo 8 caracteres
+                            </span>
+                            <span class="hint-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Al menos un número
+                            </span>
+                            <span class="hint-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                Una mayúscula
+                            </span>
+                        </div>
+
+                        <div class="submit-area">
+                            <button type="submit" class="btn-submit">
+                                Crear Cuenta
+                            </button>
+                            <a href="{{ url_for('auth.login') }}" class="back-link">
+                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
+                                Volver al inicio de sesión
+                            </a>
+                        </div>
+
+                    </form>
+                </div>
+
+                <div class="reg-footer">
+                    Al registrarte aceptas los términos de uso del sistema &nbsp;·&nbsp; Hobbys Car Audio &copy; 2026
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>

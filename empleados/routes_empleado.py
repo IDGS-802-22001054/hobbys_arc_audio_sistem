@@ -1,0 +1,257 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from models import db, Empleado, Persona, Usuario, Rol
+from werkzeug.security import generate_password_hash
+from sqlalchemy import text
+from datetime import datetime
+from flask_login import login_required, current_user
+
+import forms
+import base64
+
+empleados_bp = Blueprint('empleados', __name__)
+
+TAMANO_MAXIMO = 2 * 1024 * 1024
+ 
+FIRMAS = [
+    (b'\xff\xd8\xff', 'jpeg'),
+    (b'\x89PNG\r\n\x1a\n', 'png'),
+    (b'GIF87a', 'gif'),
+    (b'GIF89a', 'gif'),
+    (b'RIFF', 'webp'),
+]
+ 
+def detectar_tipo(imagen_bytes):
+    for firma, tipo in FIRMAS:
+        if imagen_bytes.startswith(firma):
+            return tipo
+    return None
+ 
+ 
+def foto_a_base64(archivo):
+    if not archivo or archivo.filename == '':
+        return None
+ 
+    imagen_bytes = archivo.read()
+ 
+    if len(imagen_bytes) > TAMANO_MAXIMO:
+        flash('La foto no debe superar 2 MB.')
+        return None
+ 
+    tipo = detectar_tipo(imagen_bytes)
+    if tipo is None:
+        flash('Formato de imagen no permitido. Use JPG, PNG, GIF o WEBP.')
+        return None
+ 
+    encoded = base64.b64encode(imagen_bytes).decode('utf-8')
+    return f'data:image/{tipo};base64,{encoded}'
+
+@empleados_bp.route('/empleados', methods=['GET'])
+def empleados():
+    q = request.args.get('q', '').strip()
+    resultado = db.session.execute(text('CALL SP_Empleados_Listar()'))
+    lista = resultado.fetchall()
+
+    if q:
+        q_lower = q.lower()
+        if q_lower in ('activo', 'activos'):
+            lista = [e for e in lista if e.Activo == 1]
+        elif q_lower in ('inactivo', 'inactivos'):
+            lista = [e for e in lista if e.Activo == 0]
+        else:
+            lista = [e for e in lista if
+                     q_lower in (e.Nombre or '').lower() or
+                     q_lower in (e.Apellidos or '').lower() or
+                     q_lower in (e.Puesto or '').lower() or
+                     q_lower in (e.CorreoElectronico or '').lower() or
+                     q_lower in (e.Identificador or '').lower() or
+                     q_lower in (e.NombreRol or '').lower() or
+                     q_lower in str(e.IdEmpleado)]
+                     
+    return render_template('empleado/empleados.html', empleados=lista, q=q)
+
+
+@empleados_bp.route('/empleados/nuevo', methods=['GET', 'POST'])
+def nuevo_empleado():
+    form = forms.EmpleadoForm(request.form)
+ 
+    if request.method == 'POST':
+        foto_b64 = foto_a_base64(request.files.get('foto'))
+ 
+        password_hash = None
+        if form.identificador.data:
+            password_hash = generate_password_hash(form.password.data)
+ 
+        db.session.execute(
+            text('CALL SP_Empleados_Registrar(:nombre, :apellidos, :telefono, :correo, '
+                 ':direccion, :foto, :puesto, :fecha_ingreso, :salario, '
+                 ':identificador, :password_hash, :id_rol, @id_empleado)'),
+            {
+                'nombre': form.nombre.data,
+                'apellidos': form.apellidos.data,
+                'telefono': form.telefono.data,
+                'correo': form.correo.data,
+                'direccion': form.direccion.data,
+                'foto': foto_b64,
+                'puesto': form.puesto.data,
+                'fecha_ingreso': datetime.now(),
+                'salario': form.salario.data,
+                'identificador': form.identificador.data or None,
+                'password_hash': password_hash,
+                'id_rol': form.id_rol.data or None,
+            }
+        )
+        db.session.commit()
+        flash('Empleado registrado correctamente.')
+        return redirect(url_for('empleados.empleados'))
+ 
+    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
+    return render_template('empleado/registrar.html', form=form, roles=roles)
+
+
+@empleados_bp.route('/empleados/ver/<int:id>', methods=['GET'])
+def ver_empleado(id):
+    resultado = db.session.execute(
+        text('CALL SP_Empleados_Ver(:id)'),
+        {'id': id}
+    )
+    fila = resultado.fetchone()
+ 
+    if fila is None:
+        from flask import abort
+        abort(404)
+ 
+    return render_template('empleado/detalle.html', e=fila)
+
+@empleados_bp.route('/empleados/editar/<int:id>', methods=['GET', 'POST'])
+def editar_empleado(id):
+    form = forms.EmpleadoForm(request.form)
+ 
+    if request.method == 'GET':
+        resultado = db.session.execute(
+            text('CALL SP_Empleados_Ver(:id)'),
+            {'id': id}
+        )
+        fila = resultado.fetchone()
+ 
+        if fila is None:
+            from flask import abort
+            abort(404)
+ 
+        form.nombre.data= fila.Nombre
+        form.apellidos.data = fila.Apellidos
+        form.telefono.data = fila.Telefono
+        form.correo.data = fila.CorreoElectronico
+        form.direccion.data = fila.Direccion
+        form.puesto.data = fila.Puesto
+        form.salario.data = fila.Salario
+        form.identificador.data = fila.Identificador
+        form.id_rol.data = fila.IdRol
+ 
+    if request.method == 'POST':
+        nueva_foto = foto_a_base64(request.files.get('foto'))
+ 
+        password_hash = None
+        if form.password.data:
+            password_hash = generate_password_hash(form.password.data)
+ 
+        db.session.execute(
+            text('CALL SP_Empleados_Actualizar(:id_empleado, :nombre, :apellidos, '
+                 ':telefono, :correo, :direccion, :foto, :puesto, :salario, '
+                 ':identificador, :password_hash, :id_rol)'),
+            {
+                'id_empleado':   id,
+                'nombre':        form.nombre.data.strip(),
+                'apellidos':     form.apellidos.data.strip(),
+                'telefono':      form.telefono.data,
+                'correo':        form.correo.data.strip(),
+                'direccion':     form.direccion.data,
+                'foto':          nueva_foto,        
+                'puesto':        form.puesto.data,
+                'salario':       form.salario.data,
+                'identificador': form.identificador.data.strip(),
+                'password_hash': password_hash,    
+                'id_rol':        form.id_rol.data,
+            }
+        )
+        db.session.commit()
+        flash('Empleado actualizado correctamente.')
+        return redirect(url_for('empleados.empleados'))
+ 
+    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
+    return render_template('empleado/editar.html', form=form, roles=roles, id=id)
+
+
+@empleados_bp.route('/empleados/eliminar/<int:id>', methods=['GET', 'POST'])
+def eliminar_empleado(id):
+    fila = db.session.execute(
+        text('CALL SP_Empleados_Ver(:id)'), {'id': id}
+    ).fetchone()
+
+    if fila is None:
+        abort(404)
+
+    if request.method == 'POST':
+        db.session.execute(
+            text('CALL SP_Empleados_Eliminar(:id)'), {'id': id}
+        )
+        db.session.commit()
+        flash('Empleado desactivado correctamente.')
+        return redirect(url_for('empleados.empleados'))
+
+    return render_template('empleado/eliminar.html', e=fila, p=fila)
+
+
+@empleados_bp.route('/empleados/activar/<int:id>', methods=['POST'])
+def activar_empleado(id):
+    db.session.execute(
+        text('CALL SP_Empleados_Activar(:id)'), {'id': id}
+    )
+    db.session.commit()
+    flash('Empleado activado correctamente.')
+    return redirect(url_for('empleados.empleados'))
+
+@empleados_bp.route('/perfil/editar', methods=['GET', 'POST'])
+def editar_perfil():
+    empleado = db.session.query(Empleado).filter_by(
+        IdPersona=current_user.IdPersona
+    ).first_or_404()
+
+    form = forms.EmpleadoForm(request.form)
+
+    if request.method == 'GET':
+        persona = current_user.persona
+        form.nombre.data = persona.Nombre
+        form.apellidos.data = persona.Apellidos
+        form.telefono.data = persona.Telefono
+        form.correo.data = persona.CorreoElectronico
+        form.direccion.data = persona.Direccion
+        form.identificador.data = current_user.Identificador
+
+    if request.method == 'POST':
+        nueva_foto = foto_a_base64(request.files.get('foto'))
+
+        password_hash = None
+        if form.password.data:
+            password_hash = generate_password_hash(form.password.data)
+
+        db.session.execute(
+            text('CALL SP_Perfil_ActualizarPerfil(:id_empleado, :nombre, :apellidos, '
+                 ':telefono, :correo, :direccion, :foto, '
+                 ':identificador, :password_hash)'),
+            {
+                'id_empleado': empleado.IdEmpleado,
+                'nombre': form.nombre.data.strip(),
+                'apellidos': form.apellidos.data.strip(),
+                'telefono': form.telefono.data,
+                'correo': form.correo.data.strip(),
+                'direccion': form.direccion.data,
+                'foto': nueva_foto,
+                'identificador': form.identificador.data.strip(),
+                'password_hash': password_hash,
+            }
+        )
+        db.session.commit()
+        flash('Perfil actualizado correctamente.')
+        return redirect(url_for('empleados.ver_perfil'))
+
+    return render_template('empleado/editarPerfil.html', form=form)

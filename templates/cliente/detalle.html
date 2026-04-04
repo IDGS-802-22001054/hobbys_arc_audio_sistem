@@ -1,0 +1,110 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}Detalle Cliente{% endblock %}
+
+{% block container %}
+
+<div class="page-header fade-up">
+    <h2 class="page-header-title">DETALLE DE CLIENTE</h2>
+    <div class="page-header-actions">
+        <a href="{{ url_for('clientes.clientes') }}" class="btn btn-outline">
+            <i class="ph ph-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="detail-grid fade-up" style="animation-delay:0.07s">
+
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <div class="detail-avatar">
+                {% if c.Foto %}
+                <img src="{{ c.Foto }}" alt="{{ c.Nombre }}">
+                {% else %}
+                <i class="ph ph-user"></i>
+                {% endif %}
+            </div>
+            <div>
+                <div class="detail-fullname">{{ c.Nombre }} {{ c.Apellidos }}</div>
+                <div class="detail-sub">
+                    {% if c.NombreRol %}
+                    {% set rol = c.NombreRol | lower %}
+                    {% if 'admin' in rol %}
+                    <span class="role-badge role-admin"><i class="ph ph-shield-check"></i> {{ c.NombreRol }}</span>
+                    {% elif 'vend' in rol %}
+                    <span class="role-badge role-vendedor"><i class="ph ph-tag"></i> {{ c.NombreRol }}</span>
+                    {% else %}
+                    <span class="role-badge role-otro"><i class="ph ph-circles-three"></i> {{ c.NombreRol }}</span>
+                    {% endif %}
+                    {% endif %}
+                    {% if c.Activo %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Activo</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> Inactivo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-identification-card"></i> Datos Personales</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">ID Cliente</span>
+                <span class="detail-val td-mono">{{ c.IdCliente }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Correo</span>
+                <span class="detail-val td-mono">{{ c.CorreoElectronico }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Teléfono</span>
+                <span class="detail-val">{{ c.Telefono or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Dirección</span>
+                <span class="detail-val">{{ c.Direccion or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-shopping-cart"></i> Datos de Cliente</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">Compra Online</span>
+                <span class="detail-val">
+                    {% if c.PermiteCompraOnline %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Sí</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> No</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Fecha Registro</span>
+                <span class="detail-val">{{ c.FechaRegistro.strftime('%d/%m/%Y') if c.FechaRegistro else '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <div class="detail-section-title"><i class="ph ph-lock-key"></i> Acceso al Sistema</div>
+        <div class="detail-rows">
+            <div class="detail-row">
+                <span class="detail-key">Usuario</span>
+                <span class="detail-val td-mono">{{ c.Identificador or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-key">Contraseña</span>
+                <span class="detail-val td-mono" style="letter-spacing:3px;color:var(--muted2)">
+                    {% if c.Identificador %}••••••••{% else %}—{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
