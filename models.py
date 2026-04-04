@@ -6,18 +6,22 @@ from flask_login import UserMixin
 db = SQLAlchemy()
 
 
-class Rol(db.Model):
+class BaseModel(db.Model):
+    __abstract__ = True
+    __table_args__ = {"mysql_engine": "InnoDB"}
+
+
+class Rol(BaseModel):
     __tablename__ = "Rol"
 
     IdRol = db.Column(db.Integer, primary_key=True, autoincrement=True)
     Nombre = db.Column(db.String(50), nullable=False, unique=True)
     Descripcion = db.Column(db.String(200))
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
-
     usuarios = db.relationship("Usuario", back_populates="rol", lazy=True)
 
 
-class Persona(db.Model):
+class Persona(BaseModel):
     __tablename__ = "Persona"
 
     IdPersona = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -26,24 +30,22 @@ class Persona(db.Model):
     Telefono = db.Column(db.String(30))
     CorreoElectronico = db.Column(db.String(120), nullable=False, unique=True)
     Direccion = db.Column(db.String(255))
-    Foto = db.Column(db.Text)
+    Foto = db.Column(LONGBLOB)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
 
-    empleado = db.relationship("Empleado", back_populates="persona", uselist=False)
     cliente = db.relationship("Cliente", back_populates="persona", uselist=False)
+    empleado = db.relationship("Empleado", back_populates="persona", uselist=False)
     usuario = db.relationship("Usuario", back_populates="persona", uselist=False)
 
 
-class Cliente(db.Model):
+class Cliente(BaseModel):
     __tablename__ = "Cliente"
 
     IdCliente = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    IdPersona = db.Column(
-        db.Integer, db.ForeignKey("Persona.IdPersona"), nullable=False, unique=True
-    )
+    IdPersona = db.Column(db.Integer, db.ForeignKey("Persona.IdPersona"), nullable=False, unique=True)
     PermiteCompraOnline = db.Column(
         db.Boolean, nullable=False, server_default=sql_text("1")
     )
@@ -55,13 +57,11 @@ class Cliente(db.Model):
     ventas = db.relationship("Venta", back_populates="cliente", lazy=True)
 
 
-class Empleado(db.Model):
+class Empleado(BaseModel):
     __tablename__ = "Empleado"
 
     IdEmpleado = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    IdPersona = db.Column(
-        db.Integer, db.ForeignKey("Persona.IdPersona"), nullable=False, unique=True
-    )
+    IdPersona = db.Column(db.Integer, db.ForeignKey("Persona.IdPersona"), nullable=False, unique=True)
     Puesto = db.Column(db.String(100))
     FechaIngreso = db.Column(db.Date)
     Salario = db.Column(db.Numeric(18, 2))
@@ -73,7 +73,7 @@ class Empleado(db.Model):
     persona = db.relationship("Persona", back_populates="empleado", uselist=False)
 
 
-class Usuario(UserMixin, db.Model):
+class Usuario(UserMixin, BaseModel):
     __tablename__ = "Usuario"
 
     IdUsuario = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -82,102 +82,77 @@ class Usuario(UserMixin, db.Model):
     PasswordHash = db.Column(db.String(255), nullable=False)
     IdRol = db.Column(db.Integer, db.ForeignKey("Rol.IdRol"), nullable=False)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
-    FechaRegistro = db.Column(db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP"))
+    FechaRegistro = db.Column(
+        db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
+    )
     FechaUltimoAcceso = db.Column(db.DateTime)
+
     persona = db.relationship("Persona", back_populates="usuario", uselist=False)
     rol = db.relationship("Rol", back_populates="usuarios", uselist=False)
-
-    def get_id(self):
-        return str(self.IdUsuario)
-
     configuraciones_actualizadas = db.relationship(
         "ConfiguracionSistema",
         back_populates="usuario_actualiza",
-        foreign_keys="ConfiguracionSistema.IdUsuarioActualiza",
-        lazy=True,
+        foreign_keys=lambda: [ConfiguracionSistema.IdUsuarioActualiza], lazy=True
     )
-
     movimientos_materia_prima = db.relationship(
         "MovimientoMateriaPrima",
         back_populates="usuario",
-        foreign_keys="MovimientoMateriaPrima.IdUsuario",
-        lazy=True,
+        foreign_keys=lambda: [MovimientoMateriaPrima.IdUsuario], lazy=True
     )
-
     compras_materia_prima_registradas = db.relationship(
         "CompraMateriaPrima",
         back_populates="usuario_registro",
-        foreign_keys="CompraMateriaPrima.IdUsuarioRegistro",
-        lazy=True,
+        foreign_keys=lambda: [CompraMateriaPrima.IdUsuarioRegistro], lazy=True
     )
-
     recetas_registradas = db.relationship(
         "Receta",
         back_populates="usuario_registro",
-        foreign_keys="Receta.IdUsuarioRegistro",
-        lazy=True,
+        foreign_keys=lambda: [Receta.IdUsuarioRegistro], lazy=True
     )
-
     recetas_aprobadas = db.relationship(
         "Receta",
         back_populates="usuario_aprueba",
-        foreign_keys="Receta.IdUsuarioAprueba",
-        lazy=True,
+        foreign_keys=lambda: [Receta.IdUsuarioAprueba], lazy=True
     )
-
     solicitudes_realizadas = db.relationship(
         "SolicitudProduccion",
         back_populates="usuario_solicita",
-        foreign_keys="SolicitudProduccion.IdUsuarioSolicita",
-        lazy=True,
+        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioSolicita], lazy=True
     )
-
     solicitudes_aprobadas = db.relationship(
         "SolicitudProduccion",
         back_populates="usuario_aprueba",
-        foreign_keys="SolicitudProduccion.IdUsuarioAprueba",
-        lazy=True,
+        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioAprueba], lazy=True
     )
-
     producciones_registradas = db.relationship(
         "Produccion",
         back_populates="usuario_registro",
-        foreign_keys="Produccion.IdUsuarioRegistro",
-        lazy=True,
+        foreign_keys=lambda: [Produccion.IdUsuarioRegistro], lazy=True
     )
-
     movimientos_producto_terminado = db.relationship(
         "MovimientoProductoTerminado",
         back_populates="usuario",
-        foreign_keys="MovimientoProductoTerminado.IdUsuario",
-        lazy=True,
+        foreign_keys=lambda: [MovimientoProductoTerminado.IdUsuario], lazy=True
     )
-
     ventas_registradas = db.relationship(
         "Venta",
         back_populates="usuario_registro",
-        foreign_keys="Venta.IdUsuarioRegistro",
-        lazy=True,
+        foreign_keys=lambda: [Venta.IdUsuarioRegistro], lazy=True
     )
-
     cortes_venta_diario_registrados = db.relationship(
         "CorteVentaDiario",
         back_populates="usuario_registro",
-        foreign_keys="CorteVentaDiario.IdUsuarioRegistro",
-        lazy=True,
+        foreign_keys=lambda: [CorteVentaDiario.IdUsuarioRegistro], lazy=True
     )
-
     alertas_destino = db.relationship(
         "AlertaSistema",
         back_populates="usuario_destino",
-        foreign_keys="AlertaSistema.IdUsuarioDestino",
-        lazy=True,
+        foreign_keys=lambda: [AlertaSistema.IdUsuarioDestino], lazy=True
     )
-
     sesiones = db.relationship("SesionUsuario", back_populates="usuario", lazy=True)
 
 
-class ConfiguracionSistema(db.Model):
+class ConfiguracionSistema(BaseModel):
     __tablename__ = "ConfiguracionSistema"
 
     IdConfiguracion = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -209,7 +184,7 @@ class ConfiguracionSistema(db.Model):
     )
 
 
-class Proveedor(db.Model):
+class Proveedor(BaseModel):
     __tablename__ = "Proveedor"
 
     IdProveedor = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -222,15 +197,13 @@ class Proveedor(db.Model):
     )
     RFC = db.Column(db.String(13), nullable=False, unique=True)
 
-    materias_primas = db.relationship(
-        "MateriaPrima", back_populates="proveedor", lazy=True
-    )
+    materias_primas = db.relationship("MateriaPrima", back_populates="proveedor", lazy=True)
     compras_materia_prima = db.relationship(
         "CompraMateriaPrima", back_populates="proveedor", lazy=True
     )
 
 
-class UnidadMedida(db.Model):
+class UnidadMedida(BaseModel):
     __tablename__ = "UnidadMedida"
 
     IdUnidadMedida = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -238,12 +211,10 @@ class UnidadMedida(db.Model):
     Abreviatura = db.Column(db.String(20), nullable=False, unique=True)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
 
-    materias_primas = db.relationship(
-        "MateriaPrima", back_populates="unidad_medida", lazy=True
-    )
+    materias_primas = db.relationship("MateriaPrima", back_populates="unidad_medida", lazy=True)
 
 
-class MateriaPrima(db.Model):
+class MateriaPrima(BaseModel):
     __tablename__ = "MateriaPrima"
 
     IdMateriaPrima = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -270,12 +241,16 @@ class MateriaPrima(db.Model):
 
     proveedor = db.relationship("Proveedor", back_populates="materias_primas", uselist=False)
     unidad_medida = db.relationship("UnidadMedida", back_populates="materias_primas", uselist=False)
-    movimientos = db.relationship("MovimientoMateriaPrima", back_populates="materia_prima", lazy=True)
-    detalles_compra = db.relationship("CompraMateriaPrimaDetalle", back_populates="materia_prima", lazy=True)
+    movimientos = db.relationship(
+        "MovimientoMateriaPrima", back_populates="materia_prima", lazy=True
+    )
+    detalles_compra = db.relationship(
+        "CompraMateriaPrimaDetalle", back_populates="materia_prima", lazy=True
+    )
     recetas_detalle = db.relationship("RecetaDetalle", back_populates="materia_prima", lazy=True)
 
 
-class MovimientoMateriaPrima(db.Model):
+class MovimientoMateriaPrima(BaseModel):
     __tablename__ = "MovimientoMateriaPrima"
 
     IdMovimientoMateriaPrima = db.Column(
@@ -296,10 +271,14 @@ class MovimientoMateriaPrima(db.Model):
     IdUsuario = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False)
 
     materia_prima = db.relationship("MateriaPrima", back_populates="movimientos", uselist=False)
-    usuario = db.relationship("Usuario", back_populates="movimientos_materia_prima", uselist=False)
+    usuario = db.relationship(
+        "Usuario",
+        back_populates="movimientos_materia_prima",
+        foreign_keys=[IdUsuario], uselist=False
+    )
 
 
-class CompraMateriaPrima(db.Model):
+class CompraMateriaPrima(BaseModel):
     __tablename__ = "CompraMateriaPrima"
 
     IdCompraMateriaPrima = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -316,11 +295,15 @@ class CompraMateriaPrima(db.Model):
     )
 
     proveedor = db.relationship("Proveedor", back_populates="compras_materia_prima", uselist=False)
-    usuario_registro = db.relationship("Usuario", back_populates="compras_materia_prima_registradas", uselist=False)
+    usuario_registro = db.relationship(
+        "Usuario",
+        back_populates="compras_materia_prima_registradas",
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
+    )
     detalles = db.relationship("CompraMateriaPrimaDetalle", back_populates="compra", lazy=True)
 
 
-class CompraMateriaPrimaDetalle(db.Model):
+class CompraMateriaPrimaDetalle(BaseModel):
     __tablename__ = "CompraMateriaPrimaDetalle"
 
     IdCompraMateriaPrimaDetalle = db.Column(
@@ -342,7 +325,7 @@ class CompraMateriaPrimaDetalle(db.Model):
     materia_prima = db.relationship("MateriaPrima", back_populates="detalles_compra", uselist=False)
 
 
-class ProductoTerminado(db.Model):
+class ProductoTerminado(BaseModel):
     __tablename__ = "ProductoTerminado"
 
     IdProductoTerminado = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -363,13 +346,17 @@ class ProductoTerminado(db.Model):
     )
 
     receta = db.relationship("Receta", back_populates="producto_terminado", uselist=False)
-    solicitudes_produccion = db.relationship("SolicitudProduccion", back_populates="producto_terminado", lazy=True)
+    solicitudes_produccion = db.relationship(
+        "SolicitudProduccion", back_populates="producto_terminado", lazy=True
+    )
     producciones = db.relationship("Produccion", back_populates="producto_terminado", lazy=True)
-    movimientos = db.relationship("MovimientoProductoTerminado", back_populates="producto_terminado", lazy=True)
+    movimientos = db.relationship(
+        "MovimientoProductoTerminado", back_populates="producto_terminado", lazy=True
+    )
     ventas_detalle = db.relationship("VentaDetalle", back_populates="producto_terminado", lazy=True)
 
 
-class Receta(db.Model):
+class Receta(BaseModel):
     __tablename__ = "Receta"
 
     IdProductoTerminado = db.Column(
@@ -392,13 +379,23 @@ class Receta(db.Model):
     FechaAprobacion = db.Column(db.DateTime)
     Activa = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
 
-    producto_terminado = db.relationship("ProductoTerminado", back_populates="receta", uselist=False)
-    usuario_registro = db.relationship("Usuario", back_populates="recetas_registradas", foreign_keys=[IdUsuarioRegistro], uselist=False)
-    usuario_aprueba = db.relationship("Usuario", back_populates="recetas_aprobadas", foreign_keys=[IdUsuarioAprueba], uselist=False)
+    producto_terminado = db.relationship(
+        "ProductoTerminado", back_populates="receta", uselist=False
+    )
+    usuario_registro = db.relationship(
+        "Usuario",
+        back_populates="recetas_registradas",
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
+    )
+    usuario_aprueba = db.relationship(
+        "Usuario",
+        back_populates="recetas_aprobadas",
+        foreign_keys=[IdUsuarioAprueba], uselist=False,
+    )
     detalles = db.relationship("RecetaDetalle", back_populates="receta", lazy=True)
 
 
-class RecetaDetalle(db.Model):
+class RecetaDetalle(BaseModel):
     __tablename__ = "RecetaDetalle"
     __table_args__ = (
         UniqueConstraint(
@@ -406,6 +403,7 @@ class RecetaDetalle(db.Model):
             "IdMateriaPrima",
             name="uq_receta_detalle_producto_materia",
         ),
+        {"mysql_engine": "InnoDB"},
     )
 
     IdRecetaDetalle = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -421,7 +419,7 @@ class RecetaDetalle(db.Model):
     materia_prima = db.relationship("MateriaPrima", back_populates="recetas_detalle", uselist=False)
 
 
-class SolicitudProduccion(db.Model):
+class SolicitudProduccion(BaseModel):
     __tablename__ = "SolicitudProduccion"
 
     IdSolicitudProduccion = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -430,9 +428,7 @@ class SolicitudProduccion(db.Model):
     )
     CantidadSolicitada = db.Column(db.Integer, nullable=False)
     Motivo = db.Column(db.String(255))
-    Estado = db.Column(
-        db.String(20), nullable=False, server_default=sql_text("'PENDIENTE'")
-    )
+    Estado = db.Column(db.String(20), nullable=False, server_default=sql_text("'PENDIENTE'"))
     FechaSolicitud = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
@@ -443,13 +439,23 @@ class SolicitudProduccion(db.Model):
     FechaAprobacion = db.Column(db.DateTime)
     ObservacionesAprobacion = db.Column(db.String(255))
 
-    producto_terminado = db.relationship("ProductoTerminado", back_populates="solicitudes_produccion", uselist=False)
-    usuario_solicita = db.relationship("Usuario", back_populates="solicitudes_realizadas", foreign_keys=[IdUsuarioSolicita], uselist=False)
-    usuario_aprueba = db.relationship("Usuario", back_populates="solicitudes_aprobadas", foreign_keys=[IdUsuarioAprueba], uselist=False)
+    producto_terminado = db.relationship(
+        "ProductoTerminado", back_populates="solicitudes_produccion", uselist=False
+    )
+    usuario_solicita = db.relationship(
+        "Usuario",
+        back_populates="solicitudes_realizadas",
+        foreign_keys=[IdUsuarioSolicita], uselist=False,
+    )
+    usuario_aprueba = db.relationship(
+        "Usuario",
+        back_populates="solicitudes_aprobadas",
+        foreign_keys=[IdUsuarioAprueba], uselist=False,
+    )
     producciones = db.relationship("Produccion", back_populates="solicitud_produccion", lazy=True)
 
 
-class Produccion(db.Model):
+class Produccion(BaseModel):
     __tablename__ = "Produccion"
 
     IdProduccion = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -468,20 +474,26 @@ class Produccion(db.Model):
     )
     FechaInicio = db.Column(db.DateTime)
     FechaFin = db.Column(db.DateTime)
-    Estado = db.Column(
-        db.String(20), nullable=False, server_default=sql_text("'PENDIENTE'")
-    )
+    Estado = db.Column(db.String(20), nullable=False, server_default=sql_text("'PENDIENTE'"))
     IdUsuarioRegistro = db.Column(
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
     )
 
-    solicitud_produccion = db.relationship("SolicitudProduccion", back_populates="producciones", uselist=False)
-    producto_terminado = db.relationship("ProductoTerminado", back_populates="producciones", uselist=False)
-    usuario_registro = db.relationship("Usuario", back_populates="producciones_registradas", foreign_keys=[IdUsuarioRegistro], uselist=False)
+    solicitud_produccion = db.relationship(
+        "SolicitudProduccion", back_populates="producciones", uselist=False
+    )
+    producto_terminado = db.relationship(
+        "ProductoTerminado", back_populates="producciones", uselist=False
+    )
+    usuario_registro = db.relationship(
+        "Usuario",
+        back_populates="producciones_registradas",
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
+    )
     defectos = db.relationship("ProduccionDefectuosa", back_populates="produccion", lazy=True)
 
 
-class ProduccionDefectuosa(db.Model):
+class ProduccionDefectuosa(BaseModel):
     __tablename__ = "ProduccionDefectuosa"
 
     IdProduccionDefectuosa = db.Column(
@@ -499,7 +511,7 @@ class ProduccionDefectuosa(db.Model):
     produccion = db.relationship("Produccion", back_populates="defectos", uselist=False)
 
 
-class MovimientoProductoTerminado(db.Model):
+class MovimientoProductoTerminado(BaseModel):
     __tablename__ = "MovimientoProductoTerminado"
 
     IdMovimientoProductoTerminado = db.Column(
@@ -519,11 +531,17 @@ class MovimientoProductoTerminado(db.Model):
     )
     IdUsuario = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False)
 
-    producto_terminado = db.relationship("ProductoTerminado", back_populates="movimientos", uselist=False)
-    usuario = db.relationship("Usuario", back_populates="movimientos_producto_terminado", uselist=False)
+    producto_terminado = db.relationship(
+        "ProductoTerminado", back_populates="movimientos", uselist=False
+    )
+    usuario = db.relationship(
+        "Usuario",
+        back_populates="movimientos_producto_terminado",
+        foreign_keys=[IdUsuario], uselist=False,
+    )
 
 
-class Venta(db.Model):
+class Venta(BaseModel):
     __tablename__ = "Venta"
 
     IdVenta = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -539,11 +557,15 @@ class Venta(db.Model):
     )
 
     cliente = db.relationship("Cliente", back_populates="ventas", uselist=False)
-    usuario_registro = db.relationship("Usuario", back_populates="ventas_registradas", uselist=False)
+    usuario_registro = db.relationship(
+        "Usuario",
+        back_populates="ventas_registradas",
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
+    )
     detalles = db.relationship("VentaDetalle", back_populates="venta", lazy=True)
 
 
-class VentaDetalle(db.Model):
+class VentaDetalle(BaseModel):
     __tablename__ = "VentaDetalle"
 
     IdVentaDetalle = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -556,10 +578,12 @@ class VentaDetalle(db.Model):
     Subtotal = db.Column(db.Numeric(18, 2), nullable=False)
 
     venta = db.relationship("Venta", back_populates="detalles", uselist=False)
-    producto_terminado = db.relationship("ProductoTerminado", back_populates="ventas_detalle", uselist=False)
+    producto_terminado = db.relationship(
+        "ProductoTerminado", back_populates="ventas_detalle", uselist=False
+    )
 
 
-class CorteVentaDiario(db.Model):
+class CorteVentaDiario(BaseModel):
     __tablename__ = "CorteVentaDiario"
 
     IdCorteVentaDiario = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -580,10 +604,14 @@ class CorteVentaDiario(db.Model):
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
     )
 
-    usuario_registro = db.relationship("Usuario", back_populates="cortes_venta_diario_registrados", uselist=False)
+    usuario_registro = db.relationship(
+        "Usuario",
+        back_populates="cortes_venta_diario_registrados",
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
+    )
 
 
-class AlertaSistema(db.Model):
+class AlertaSistema(BaseModel):
     __tablename__ = "AlertaSistema"
 
     IdAlertaSistema = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -597,10 +625,14 @@ class AlertaSistema(db.Model):
     FechaLectura = db.Column(db.DateTime)
     IdUsuarioDestino = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"))
 
-    usuario_destino = db.relationship("Usuario", back_populates="alertas_destino", uselist=False)
+    usuario_destino = db.relationship(
+        "Usuario",
+        back_populates="alertas_destino",
+        foreign_keys=[IdUsuarioDestino], uselist=False,
+    )
 
 
-class SesionUsuario(db.Model):
+class SesionUsuario(BaseModel):
     __tablename__ = "SesionUsuario"
 
     IdSesionUsuario = db.Column(db.Integer, primary_key=True, autoincrement=True)

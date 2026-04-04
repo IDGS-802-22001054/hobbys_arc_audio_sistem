@@ -1,0 +1,76 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}DETALLES: {{ mp.Nombre }}{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <a href="{{ url_for('materia_prima.listar') }}" style="color: var(--muted2); font-size: 24px;">
+            <i class="ph ph-arrow-left"></i>
+        </a>
+        <div>
+            <h2 style="margin: 0;">{{ mp.Nombre }}</h2>
+            <p style="font-size: 11px; color: var(--muted2); font-weight: 700; text-transform: uppercase;">ID: #MP-{{ mp.IdMateriaPrima }} | {{ mp.Marca }}</p>
+        </div>
+    </div>
+    
+    <div class="header-tools">
+        <a href="{{ url_for('materia_prima.editar', id=mp.IdMateriaPrima) }}" class="btn" style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
+            <i class="ph ph-pencil-simple"></i> EDITAR DATOS
+        </a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 350px; gap: 25px;" class="fade-up">
+    <div style="background: var(--surface); padding: 30px; border-radius: 20px; border: 1px solid var(--border);">
+        <h3 style="color: var(--blue); margin-top: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px;">INFORMACIÓN GENERAL</h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div>
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 700;">DESCRIPCIÓN</label>
+                <p style="color: var(--text);">{{ mp.Descripcion or 'Sin descripción disponible.' }}</p>
+            </div>
+            <div>
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 700;">PRECIO UNITARIO</label>
+                <p style="font-size: 20px; font-weight: 800; color: var(--text);">$ {{ mp.PrecioUnitario }}</p>
+            </div>
+        </div>
+
+        <h3 style="color: var(--blue); margin-top: 30px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">PROVEEDOR</h3>
+        <div style="display: flex; align-items: center; gap: 15px; margin-top: 15px;">
+            <div style="background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); flex: 1;">
+                <p style="margin: 0; font-weight: 800;">{{ mp.proveedor.NombreEmpresa }}</p>
+                <p style="margin: 5px 0 0; font-size: 12px; color: var(--muted2);">RFC: {{ mp.proveedor.RFC }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 25px;">
+        <div style="background: var(--bg); padding: 25px; border-radius: 20px; border: 2px solid {{ 'var(--red)' if mp.StockActual <= mp.StockMinimo else 'var(--border)' }}; text-align: center;">
+            <label style="color: var(--muted2); font-size: 12px; font-weight: 700;">EXISTENCIAS ACTUALES</label>
+            <h1 style="font-size: 48px; margin: 10px 0; color: {{ 'var(--red)' if mp.StockActual <= mp.StockMinimo else 'white' }};">
+                {{ mp.StockActual }} <small style="font-size: 18px;">{{ mp.unidad_medida.Abreviatura if mp.unidad_medida else '' }}</small>
+            </h1>
+            
+            {% if mp.StockActual <= mp.StockMinimo %}
+                <div style="background: rgba(255, 71, 87, 0.1); color: var(--red); padding: 8px; border-radius: 8px; font-size: 11px; font-weight: 800;">
+                    <i class="ph ph-warning"></i> BAJO STOCK MÍNIMO ({{ mp.StockMinimo }})
+                </div>
+            {% else %}
+                <p style="color: var(--muted2); font-size: 12px;">Stock mínimo: {{ mp.StockMinimo }} {{ mp.unidad_medida.Abreviatura if mp.unidad_medida else '' }}</p>
+            {% endif %}
+        </div>
+
+        <div style="display: grid; gap: 10px;">
+            <a href="{{ url_for('materia_prima.formulario_movimiento', tipo='ENTRADA', id_mp_temp=mp.IdMateriaPrima) }}"
+                class="btn" style="background: var(--blue); color: white; justify-content: center;">
+                <i class="ph ph-plus"></i> AGREGAR STOCK
+            </a>
+            <a href="{{ url_for('materia_prima.formulario_movimiento', tipo='SALIDA', id_mp_temp=mp.IdMateriaPrima) }}"
+                class="btn" style="background: var(--red); color: white; justify-content: center;">
+                <i class="ph ph-minus"></i> REGISTRAR SALIDA
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

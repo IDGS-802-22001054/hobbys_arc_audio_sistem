@@ -1,0 +1,87 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}DETALLES DEL PROVEEDOR{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <i class="ph ph-buildings" style="font-size: 30px; color: var(--blue);"></i>
+        <div>
+            <h2 style="margin: 0;">{{ p.NombreEmpresa }}</h2>
+            <p style="font-size: 11px; color: var(--muted2); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                ID Proveedor: #{{ p.IdProveedor }}
+            </p>
+        </div>
+    </div>
+    
+    <div class="header-tools">
+        <a href="{{ url_for('proveedores.editar', id=p.IdProveedor) }}" class="btn" style="background: var(--yellow); color: var(--darker);">
+            <i class="ph ph-pencil-simple"></i> EDITAR DATOS
+        </a>
+        <a href="{{ url_for('proveedores.listar') }}" class="btn" style="background: var(--surface); color: var(--muted);">
+            <i class="ph ph-arrow-left"></i> VOLVER
+        </a>
+    </div>
+</div>
+
+<div class="table-wrapper fade-up" style="max-width: 900px; margin: 0 auto;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 10px;">
+        
+        <div>
+            <h3 style="font-family: var(--font-d); color: var(--text); letter-spacing: 1px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">
+                INFORMACIÓN FISCAL Y CONTACTO
+            </h3>
+            
+            <div class="form-group">
+                <label>RFC / Identificación Fiscal</label>
+                <div class="form-input" style="background: var(--card2); border-color: transparent;">{{ p.RFC }}</div>
+            </div>
+
+            <div class="form-group">
+                <label>Teléfono Directo</label>
+                <div class="form-input" style="background: var(--card2); border-color: transparent;">
+                    {{ p.Telefono if p.Telefono else 'No registrado' }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <div class="form-input" style="background: var(--card2); border-color: transparent;">
+                    {{ p.CorreoElectronico if p.CorreoElectronico else 'No registrado' }}
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3 style="font-family: var(--font-d); color: var(--text); letter-spacing: 1px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 5px;">
+                ESTADO Y UBICACIÓN
+            </h3>
+
+            <div class="form-group">
+                <label>Estatus del Proveedor</label>
+                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0;">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: {{ 'var(--green)' if p.Activo else 'var(--red)' }}"></span>
+                    <span style="font-weight: 800; font-size: 13px; color: {{ 'var(--green)' if p.Activo else 'var(--red)' }}">
+                        {{ 'ACTIVO EN SISTEMA' if p.Activo else 'INACTIVO / SUSPENDIDO' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Dirección de Oficinas / Almacén</label>
+                <div class="form-input" style="background: var(--card2); border-color: transparent; min-height: 85px; line-height: 1.6;">
+                    {{ p.Direccion if p.Direccion else 'Sin dirección registrada' }}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Fecha de Registro en Sistema</label>
+                <div style="font-size: 11px; color: var(--muted2); font-weight: 700;">
+                    <i class="ph ph-calendar"></i> {{ p.FechaRegistro.strftime('%d de %B, %Y') if p.FechaRegistro else 'N/A' }}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "layout_emp.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/stock.css') }}">
+{% endblock %}
+
+{% block page_title %}{{ "NUEVO PRODUCTO" if modo == "nuevo" else "EDITAR STOCK" }}{% endblock %}
+
+{% block container %}
+<section class="stock-edit-page fade-up">
+    <div class="edit-card">
+        <div class="edit-header">
+            <div>
+                <p class="section-eyebrow">Inventario</p>
+                <h1 class="section-title">{{ "Crear producto" if modo == "nuevo" else "Modificar producto" }}</h1>
+                <p class="section-copy">
+                    {{ "Registra un nuevo producto terminado dentro del inventario." if modo == "nuevo" else "Actualiza los datos principales del producto terminado." }}
+                </p>
+            </div>
+            <a href="{{ url_for('stock_empleado.stock') }}" class="btn btn-blue">
+                <i class="ph ph-arrow-left"></i> Volver
+            </a>
+        </div>
+
+        <form method="post" class="stock-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if modo == "nuevo" %}
+            <input type="hidden" name="accion" value="guardar_y_receta">
+            {% endif %}
+
+            <div class="stock-form-grid">
+                <div class="form-group">
+                    <label for="nombre">Nombre</label>
+                    <input id="nombre" name="nombre" class="form-input" value="{{ producto.nombre }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="stock_actual">Existencia</label>
+                    <input id="stock_actual" name="stock_actual" type="number" min="0" class="form-input" value="{{ producto.stock_actual }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="stock_minimo">Stock minimo</label>
+                    <input id="stock_minimo" name="stock_minimo" type="number" min="0" class="form-input" value="{{ producto.stock_minimo }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="precio_venta">Precio de venta</label>
+                    <input id="precio_venta" name="precio_venta" type="number" min="0" step="0.01" class="form-input" value="{{ producto.precio_venta }}" required>
+                </div>
+
+                {% if modo == "nuevo" %}
+                <div class="form-group">
+                    <label for="foto">Imagen del producto</label>
+                    <input id="foto" name="foto" type="file" class="form-input" accept=".png,.jpg,.jpeg,.gif,.webp,image/png,image/jpeg,image/gif,image/webp">
+                </div>
+                {% endif %}
+
+                <div class="form-group stock-form-wide">
+                    <label for="descripcion">Descripcion</label>
+                    <textarea id="descripcion" name="descripcion" class="form-input stock-textarea" rows="5">{{ producto.descripcion }}</textarea>
+                </div>
+            </div>
+
+            <div class="edit-actions">
+                {% if modo == "nuevo" %}
+                <button type="submit" class="btn btn-blue">
+                    <i class="ph ph-blueprint"></i> Crear producto y anadir receta
+                </button>
+                {% else %}
+                <a href="{{ url_for('stock_empleado.receta_producto', producto_id=producto.id) }}" class="btn btn-blue">
+                    <i class="ph ph-blueprint"></i> {{ "Modificar receta" if producto.tiene_receta else "Agregar receta" }}
+                </a>
+                <button type="submit" class="btn btn-green">
+                    <i class="ph ph-floppy-disk"></i> Guardar cambios
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}REGISTRAR {{ tipo }}{% endblock %}
+
+{% block container %}
+<div class="management-header fade-up">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <i class="ph {{ 'ph-arrow-circle-down' if tipo == 'ENTRADA' else 'ph-arrow-circle-up' }}" 
+           style="font-size: 35px; color: {{ 'var(--blue)' if tipo == 'ENTRADA' else 'var(--red)' }};"></i>
+        <div>
+            <h2 style="margin: 0; letter-spacing: 1px;">REGISTRAR {{ tipo }} DE MATERIAL</h2>
+            <p style="font-size: 11px; color: var(--muted2); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px;">
+                Paso 1: Seleccionar y Cargar | Paso 2: Confirmar Detalles
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="form-container fade-up" style="max-width: 800px; margin: 0 auto; background: var(--surface); padding: 40px; border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+    
+    <form action="{{ url_for('materia_prima.formulario_movimiento', tipo=tipo) }}" method="GET"
+        style="margin-bottom: 35px; border-bottom: 1px solid var(--border); padding-bottom: 30px;">
+    
+        <input type="hidden" name="tipo_mov" value="{{ tipo }}">
+    
+        <label
+            style="display: block; margin-bottom: 10px; color: var(--muted2); font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">
+            1. BUSCAR MATERIAL EN CATÁLOGO
+        </label>
+    
+        <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+                <input type="text" name="id_mp_temp" list="materiales_list" class="btn"
+                    style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 15px; font-size: 15px;"
+                    placeholder="Escribe el nombre del material..." value="{{ info.Nombre if info else '' }}" required>
+    
+                <datalist id="materiales_list">
+                    {% for mp in materiales %}
+                   <option value="{{ mp.IdMateriaPrima }}">{{ mp.Nombre }} </option>
+                        {% endfor %}
+                </datalist>
+            </div>
+    
+            <button type="submit" class="btn"
+                style="background: rgba(52, 152, 219, 0.1); border: 1px solid var(--blue); color: var(--blue); height: 48px; padding: 0 25px; font-weight: 800;">
+                <i class="ph ph-magnifying-glass" style="font-weight: 800;"></i> CARGAR
+            </button>
+        </div>
+    </form>
+
+    <form action="{{ url_for('materia_prima.registrar_movimiento') }}" method="POST">
+        <input type="hidden" name="tipo" value="{{ tipo }}">
+        <input type="hidden" name="id_mp" value="{{ info.IdMateriaPrima if info else '' }}">
+
+        <label style="display: block; margin-bottom: 15px; color: var(--muted2); font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">2. DETALLES DEL MOVIMIENTO</label>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+            <div>
+                <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 12px; font-weight: 700;">CANTIDAD</label>
+                <input type="number" name="cantidad" step="0.01" min="0.01" class="btn" 
+                       style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px;" 
+                       {{ 'required' if info else 'disabled' }}>
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 12px; font-weight: 700;">UNIDAD DE MEDIDA</label>
+                <select name="unidad_registro" class="btn"
+                        style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px; cursor: pointer;" 
+                        {{ 'required' if info else 'disabled' }}>
+                    {% for uni in unidades %}
+                        <option value="{{ uni.val }}">{{ uni.label }}</option>
+                    {% endfor %}
+                    {% if not unidades %}
+                        <option value="">--</option>
+                    {% endif %}
+                </select>
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 12px; font-weight: 700;">COSTO UNITARIO ($)</label>
+                <input type="number" name="costo" step="0.0001" class="btn"
+                       style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px;"
+                       value="{{ info.PrecioUnitario if info else '' }}" 
+                       {{ 'required' if info else 'disabled' }}>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 35px;">
+            <label style="display: block; margin-bottom: 8px; color: var(--text); font-size: 12px; font-weight: 700;">MOTIVO O NOTA ADICIONAL</label>
+            <textarea name="motivo" rows="3" class="btn" 
+                      style="width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); resize: none; padding: 12px; line-height: 1.5;" 
+                      placeholder="Ej: Ingreso por compra a proveedor / Salida por ensamble de cajón..." 
+                      {{ 'required' if info else 'disabled' }}></textarea>
+        </div>
+
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <button type="submit" class="btn" 
+                    style="flex: 2; height: 55px; background: {{ 'var(--blue)' if tipo == 'ENTRADA' else 'var(--red)' }}; color: white; font-weight: 800; font-size: 16px; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: transform 0.2s;"
+                    {{ 'disabled' if not info }}>
+                <i class="ph ph-check-circle" style="font-size: 20px;"></i> CONFIRMAR {{ tipo }}
+            </button>
+            
+            <a href="{{ url_for('materia_prima.listar') }}" class="btn" 
+               style="flex: 1; height: 55px; background: transparent; border: 1px solid var(--border); color: var(--muted2); text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 12px;">
+                CANCELAR
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
