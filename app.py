@@ -8,6 +8,7 @@ from blueprints.compras import compras_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
 from blueprints.stock_empleado import stock_empleado_bp
+from blueprints.ventas import ventas_bp
 from dashboard.routes_dashboard import dashboard_bp
 from clientes.routes_cliente import clientes_bp
 from auth.routes_auth import auth_bp
@@ -20,7 +21,7 @@ from sqlalchemy import text
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
 
-login_manager = LoginManager(app)
+login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Inicia sesión para continuar'
 login_manager.login_message_category = 'warning'
@@ -41,11 +42,11 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(proveedores_bp)
     aplicacion.register_blueprint(materia_prima_bp)
     aplicacion.register_blueprint(compras_bp)
+    aplicacion.register_blueprint(ventas_bp)
     aplicacion.register_blueprint(dashboard_bp)
     aplicacion.register_blueprint(auth_bp)
     aplicacion.register_blueprint(empleados_bp)
     aplicacion.register_blueprint(clientes_bp)
-    aplicacion.register_blueprint(catalogo_bp)
 
 
 def registrar_manejadores_error(aplicacion):
@@ -86,6 +87,7 @@ def crear_app():
     db.init_app(aplicacion)
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
+    login_manager.init_app(aplicacion)
 
     inicializar_base_datos(aplicacion)
     registrar_blueprints(aplicacion)
@@ -99,4 +101,4 @@ app = crear_app()
 
 
 if __name__ == "__main__":
-    app.run(debug=app.config.get("DEBUG", False))
+    app.run(debug=app.config.get("DEBUG", True))

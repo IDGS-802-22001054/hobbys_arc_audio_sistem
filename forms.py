@@ -30,9 +30,25 @@ class EmpleadoForm(Form):
         validators.Optional(),
         validators.Length(max=30, message='Teléfono demasiado largo')
     ])
-    direccion = StringField('Dirección', [
+    calle = StringField('Calle', [
         validators.Optional(),
-        validators.Length(max=255, message='Dirección demasiado larga')
+        validators.Length(max=120, message='La calle es demasiado larga')
+    ])
+    colonia = StringField('Colonia', [
+        validators.Optional(),
+        validators.Length(max=120, message='La colonia es demasiado larga')
+    ])
+    numero_exterior = StringField('Número Exterior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número exterior es demasiado largo')
+    ])
+    numero_interior = StringField('Número Interior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número interior es demasiado largo')
+    ])
+    codigo_postal = StringField('Código Postal', [
+        validators.Optional(),
+        validators.Length(max=10, message='El código postal es demasiado largo')
     ])
     foto = FileField('Foto', [validators.Optional()])
 
@@ -78,9 +94,25 @@ class ClienteForm(Form):
         validators.Optional(),
         validators.Length(max=30, message='Teléfono demasiado largo')
     ])
-    direccion = StringField('Dirección', [
+    calle = StringField('Calle', [
         validators.Optional(),
-        validators.Length(max=255, message='Dirección demasiado larga')
+        validators.Length(max=120, message='La calle es demasiado larga')
+    ])
+    colonia = StringField('Colonia', [
+        validators.Optional(),
+        validators.Length(max=120, message='La colonia es demasiado larga')
+    ])
+    numero_exterior = StringField('Número Exterior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número exterior es demasiado largo')
+    ])
+    numero_interior = StringField('Número Interior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número interior es demasiado largo')
+    ])
+    codigo_postal = StringField('Código Postal', [
+        validators.Optional(),
+        validators.Length(max=10, message='El código postal es demasiado largo')
     ])
     foto = FileField('Foto', [validators.Optional()])
 
@@ -103,9 +135,25 @@ class ClientePerfilForm(Form):
         validators.Optional(),
         validators.Length(max=30, message='Teléfono demasiado largo')
     ])
-    direccion = StringField('Dirección', [
+    calle = StringField('Calle', [
         validators.Optional(),
-        validators.Length(max=255, message='Dirección demasiado larga')
+        validators.Length(max=120, message='La calle es demasiado larga')
+    ])
+    colonia = StringField('Colonia', [
+        validators.Optional(),
+        validators.Length(max=120, message='La colonia es demasiado larga')
+    ])
+    numero_exterior = StringField('Número Exterior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número exterior es demasiado largo')
+    ])
+    numero_interior = StringField('Número Interior', [
+        validators.Optional(),
+        validators.Length(max=20, message='El número interior es demasiado largo')
+    ])
+    codigo_postal = StringField('Código Postal', [
+        validators.Optional(),
+        validators.Length(max=10, message='El código postal es demasiado largo')
     ])
     foto = FileField('Foto', [validators.Optional()])
     identificador = StringField('Usuario', [

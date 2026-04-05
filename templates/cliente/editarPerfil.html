@@ -6,7 +6,7 @@
 
 <div class="page-header fade-up">
     <h2 class="page-header-title">EDITAR PERFIL</h2>
-    <a href="{{ url_for('catalogo.catalogo') }}" class="btn btn-outline">
+    <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-outline">
         <i class="ph ph-arrow-left"></i> Volver
     </a>
 </div>
@@ -56,9 +56,30 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                {{ form.direccion.label(class="form-label") }}
-                {{ form.direccion(class="form-input") }}
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.calle.label(class="form-label") }}
+                    {{ form.calle(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.colonia.label(class="form-label") }}
+                    {{ form.colonia(class="form-input") }}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.numero_exterior.label(class="form-label") }}
+                    {{ form.numero_exterior(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.numero_interior.label(class="form-label") }}
+                    {{ form.numero_interior(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.codigo_postal.label(class="form-label") }}
+                    {{ form.codigo_postal(class="form-input") }}
+                </div>
             </div>
         </div>
 
@@ -83,7 +104,7 @@
     </div>
 
     <div class="form-actions fade-up" style="animation-delay:0.12s">
-        <a href="{{ url_for('catalogo.catalogo') }}" class="btn btn-outline">Cancelar</a>
+        <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-outline">Cancelar</a>
         <button type="submit" class="btn btn-blue">
             <i class="ph ph-check"></i> Guardar Cambios
         </button>

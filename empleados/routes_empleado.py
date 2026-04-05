@@ -45,6 +45,16 @@ def foto_a_base64(archivo):
     encoded = base64.b64encode(imagen_bytes).decode('utf-8')
     return f'data:image/{tipo};base64,{encoded}'
 
+
+def _datos_direccion_form(form):
+    return {
+        'calle': (form.calle.data or '').strip() or None,
+        'colonia': (form.colonia.data or '').strip() or None,
+        'numero_exterior': (form.numero_exterior.data or '').strip() or None,
+        'numero_interior': (form.numero_interior.data or '').strip() or None,
+        'codigo_postal': (form.codigo_postal.data or '').strip() or None,
+    }
+
 @empleados_bp.route('/empleados', methods=['GET'])
 def empleados():
     q = request.args.get('q', '').strip()
@@ -76,6 +86,7 @@ def nuevo_empleado():
  
     if request.method == 'POST':
         foto_b64 = foto_a_base64(request.files.get('foto'))
+        direccion = _datos_direccion_form(form)
  
         password_hash = None
         if form.identificador.data:
@@ -83,14 +94,14 @@ def nuevo_empleado():
  
         db.session.execute(
             text('CALL SP_Empleados_Registrar(:nombre, :apellidos, :telefono, :correo, '
-                 ':direccion, :foto, :puesto, :fecha_ingreso, :salario, '
+                 ':calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, '
+                 ':foto, :puesto, :fecha_ingreso, :salario, '
                  ':identificador, :password_hash, :id_rol, @id_empleado)'),
             {
                 'nombre': form.nombre.data,
                 'apellidos': form.apellidos.data,
                 'telefono': form.telefono.data,
                 'correo': form.correo.data,
-                'direccion': form.direccion.data,
                 'foto': foto_b64,
                 'puesto': form.puesto.data,
                 'fecha_ingreso': datetime.now(),
@@ -98,6 +109,7 @@ def nuevo_empleado():
                 'identificador': form.identificador.data or None,
                 'password_hash': password_hash,
                 'id_rol': form.id_rol.data or None,
+                **direccion,
             }
         )
         db.session.commit()
@@ -141,7 +153,11 @@ def editar_empleado(id):
         form.apellidos.data = fila.Apellidos
         form.telefono.data = fila.Telefono
         form.correo.data = fila.CorreoElectronico
-        form.direccion.data = fila.Direccion
+        form.calle.data = fila.Calle
+        form.colonia.data = fila.Colonia
+        form.numero_exterior.data = fila.NumeroExterior
+        form.numero_interior.data = fila.NumeroInterior
+        form.codigo_postal.data = fila.CodigoPostal
         form.puesto.data = fila.Puesto
         form.salario.data = fila.Salario
         form.identificador.data = fila.Identificador
@@ -149,6 +165,7 @@ def editar_empleado(id):
  
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
+        direccion = _datos_direccion_form(form)
  
         password_hash = None
         if form.password.data:
@@ -156,7 +173,8 @@ def editar_empleado(id):
  
         db.session.execute(
             text('CALL SP_Empleados_Actualizar(:id_empleado, :nombre, :apellidos, '
-                 ':telefono, :correo, :direccion, :foto, :puesto, :salario, '
+                 ':telefono, :correo, :calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, '
+                 ':foto, :puesto, :salario, '
                  ':identificador, :password_hash, :id_rol)'),
             {
                 'id_empleado':   id,
@@ -164,13 +182,13 @@ def editar_empleado(id):
                 'apellidos':     form.apellidos.data.strip(),
                 'telefono':      form.telefono.data,
                 'correo':        form.correo.data.strip(),
-                'direccion':     form.direccion.data,
                 'foto':          nueva_foto,        
                 'puesto':        form.puesto.data,
                 'salario':       form.salario.data,
                 'identificador': form.identificador.data.strip(),
                 'password_hash': password_hash,    
                 'id_rol':        form.id_rol.data,
+                **direccion,
             }
         )
         db.session.commit()
@@ -224,11 +242,16 @@ def editar_perfil():
         form.apellidos.data = persona.Apellidos
         form.telefono.data = persona.Telefono
         form.correo.data = persona.CorreoElectronico
-        form.direccion.data = persona.Direccion
+        form.calle.data = persona.Calle
+        form.colonia.data = persona.Colonia
+        form.numero_exterior.data = persona.NumeroExterior
+        form.numero_interior.data = persona.NumeroInterior
+        form.codigo_postal.data = persona.CodigoPostal
         form.identificador.data = current_user.Identificador
 
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
+        direccion = _datos_direccion_form(form)
 
         password_hash = None
         if form.password.data:
@@ -236,7 +259,7 @@ def editar_perfil():
 
         db.session.execute(
             text('CALL SP_Perfil_ActualizarPerfil(:id_empleado, :nombre, :apellidos, '
-                 ':telefono, :correo, :direccion, :foto, '
+                 ':telefono, :correo, :calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, :foto, '
                  ':identificador, :password_hash)'),
             {
                 'id_empleado': empleado.IdEmpleado,
@@ -244,10 +267,10 @@ def editar_perfil():
                 'apellidos': form.apellidos.data.strip(),
                 'telefono': form.telefono.data,
                 'correo': form.correo.data.strip(),
-                'direccion': form.direccion.data,
                 'foto': nueva_foto,
                 'identificador': form.identificador.data.strip(),
                 'password_hash': password_hash,
+                **direccion,
             }
         )
         db.session.commit()

@@ -7,10 +7,10 @@
 <div class="page-header fade-up">
     <h2 class="page-header-title">MI PERFIL</h2>
     <div class="page-header-actions">
-        <a href="{{ url_for('clientes.editar_perfil', id=current_user.IdUsuario) }}" class="btn btn-blue">
+        <a href="{{ url_for('clientes.editar_perfil') }}" class="btn btn-blue">
             <i class="ph ph-pencil-simple"></i> Editar
         </a>
-        <a href="{{ url_for('catalogo.catalogo') }}" class="btn btn-outline">
+        <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-outline">
             <i class="ph ph-arrow-left"></i> Volver
         </a>
     </div>
@@ -55,12 +55,12 @@
                 <span class="detail-val td-mono">{{ persona.CorreoElectronico }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Teléfono</span>
+                <span class="detail-key">Telefono</span>
                 <span class="detail-val">{{ persona.Telefono or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Dirección</span>
-                <span class="detail-val">{{ persona.Direccion or '—' }}</span>
+                <span class="detail-key">Direccion</span>
+                <span class="detail-val">{{ persona.direccion_formateada or '—' }}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-key">Miembro desde</span>
@@ -77,7 +77,7 @@
                 <span class="detail-val td-mono">{{ current_user.Identificador or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Contraseña</span>
+                <span class="detail-key">Contrasena</span>
                 <span class="detail-val td-mono">••••••••</span>
             </div>
         </div>

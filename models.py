@@ -1,9 +1,31 @@
 from flask_sqlalchemy import SQLAlchemy
+from decimal import Decimal
 from sqlalchemy import UniqueConstraint, text as sql_text
-from sqlalchemy.dialects.mysql import MEDIUMBLOB
+from sqlalchemy.dialects.mysql import LONGBLOB, MEDIUMBLOB
 from flask_login import UserMixin
 
 db = SQLAlchemy()
+
+
+def _decimal_modelo(valor):
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor or 0)).quantize(Decimal("0.01"))
+
+
+def _costo_unitario_materia(materia_prima):
+    if materia_prima is None:
+        return Decimal("0.00")
+
+    precio_unitario = _decimal_modelo(materia_prima.PrecioUnitario)
+    abreviatura = ""
+    if materia_prima.unidad_medida:
+        abreviatura = (materia_prima.unidad_medida.Abreviatura or "").strip().lower()
+
+    if abreviatura in {"g", "ml"}:
+        return (precio_unitario / Decimal("1000")).quantize(Decimal("0.0001"))
+
+    return precio_unitario
 
 
 class BaseModel(db.Model):
@@ -29,7 +51,11 @@ class Persona(BaseModel):
     Apellidos = db.Column(db.String(150), nullable=False)
     Telefono = db.Column(db.String(30))
     CorreoElectronico = db.Column(db.String(120), nullable=False, unique=True)
-    Direccion = db.Column(db.String(255))
+    Calle = db.Column(db.String(120))
+    Colonia = db.Column(db.String(120))
+    NumeroExterior = db.Column(db.String(20))
+    NumeroInterior = db.Column(db.String(20))
+    CodigoPostal = db.Column(db.String(10))
     Foto = db.Column(LONGBLOB)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
@@ -39,6 +65,32 @@ class Persona(BaseModel):
     cliente = db.relationship("Cliente", back_populates="persona", uselist=False)
     empleado = db.relationship("Empleado", back_populates="persona", uselist=False)
     usuario = db.relationship("Usuario", back_populates="persona", uselist=False)
+
+    @property
+    def direccion_formateada(self):
+        partes = []
+        calle = (self.Calle or "").strip()
+        numero_exterior = (self.NumeroExterior or "").strip()
+        numero_interior = (self.NumeroInterior or "").strip()
+        colonia = (self.Colonia or "").strip()
+        codigo_postal = (self.CodigoPostal or "").strip()
+
+        primera_linea = " ".join(
+            parte for parte in [calle, f"No. {numero_exterior}" if numero_exterior else ""] if parte
+        ).strip()
+        if numero_interior:
+            primera_linea = " ".join(
+                parte for parte in [primera_linea, f"Int. {numero_interior}"] if parte
+            ).strip()
+
+        if primera_linea:
+            partes.append(primera_linea)
+        if colonia:
+            partes.append(f"Col. {colonia}")
+        if codigo_postal:
+            partes.append(f"CP {codigo_postal}")
+
+        return ", ".join(partes)
 
 
 class Cliente(BaseModel):
@@ -55,6 +107,30 @@ class Cliente(BaseModel):
 
     persona = db.relationship("Persona", back_populates="cliente", uselist=False)
     ventas = db.relationship("Venta", back_populates="cliente", lazy=True)
+    tarjetas = db.relationship("TarjetaCliente", back_populates="cliente", lazy=True)
+
+
+class TarjetaCliente(BaseModel):
+    __tablename__ = "TarjetaCliente"
+
+    IdTarjetaCliente = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    IdCliente = db.Column(db.Integer, db.ForeignKey("Cliente.IdCliente"), nullable=False)
+    Alias = db.Column(db.String(100))
+    Titular = db.Column(db.String(150), nullable=False)
+    Marca = db.Column(db.String(50), nullable=False)
+    Ultimos4 = db.Column(db.String(4), nullable=False)
+    MesExpiracion = db.Column(db.Integer, nullable=False)
+    AnioExpiracion = db.Column(db.Integer, nullable=False)
+    TokenPasarela = db.Column(db.String(255), nullable=False, unique=True)
+    EsPredeterminada = db.Column(
+        db.Boolean, nullable=False, server_default=sql_text("0")
+    )
+    Activa = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
+    FechaRegistro = db.Column(
+        db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
+    )
+
+    cliente = db.relationship("Cliente", back_populates="tarjetas", uselist=False)
 
 
 class Empleado(BaseModel):
@@ -86,6 +162,9 @@ class Usuario(UserMixin, BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
     FechaUltimoAcceso = db.Column(db.DateTime)
+
+    def get_id(self):
+        return str(self.IdUsuario)
 
     persona = db.relationship("Persona", back_populates="usuario", uselist=False)
     rol = db.relationship("Rol", back_populates="usuarios", uselist=False)
@@ -191,6 +270,7 @@ class Proveedor(BaseModel):
     NombreEmpresa = db.Column(db.String(150), nullable=False)
     Telefono = db.Column(db.String(30))
     CorreoElectronico = db.Column(db.String(120))
+    Direccion = db.Column(db.String(255))
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
@@ -286,9 +366,6 @@ class CompraMateriaPrima(BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
     IdProveedor = db.Column(db.Integer, db.ForeignKey("Proveedor.IdProveedor"))
-    TotalCompra = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
     Observaciones = db.Column(db.String(255))
     IdUsuarioRegistro = db.Column(
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
@@ -301,6 +378,14 @@ class CompraMateriaPrima(BaseModel):
         foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
     detalles = db.relationship("CompraMateriaPrimaDetalle", back_populates="compra", lazy=True)
+
+    @property
+    def TotalCompra(self):
+        total = sum(
+            (_decimal_modelo(detalle.Cantidad) * _decimal_modelo(detalle.CostoUnitario))
+            for detalle in self.detalles
+        )
+        return total.quantize(Decimal("0.01"))
 
 
 class CompraMateriaPrimaDetalle(BaseModel):
@@ -319,10 +404,15 @@ class CompraMateriaPrimaDetalle(BaseModel):
     )
     Cantidad = db.Column(db.Numeric(18, 2), nullable=False)
     CostoUnitario = db.Column(db.Numeric(18, 2), nullable=False)
-    Subtotal = db.Column(db.Numeric(18, 2), nullable=False)
 
     compra = db.relationship("CompraMateriaPrima", back_populates="detalles", uselist=False)
     materia_prima = db.relationship("MateriaPrima", back_populates="detalles_compra", uselist=False)
+
+    @property
+    def Subtotal(self):
+        return (_decimal_modelo(self.Cantidad) * _decimal_modelo(self.CostoUnitario)).quantize(
+            Decimal("0.01")
+        )
 
 
 class ProductoTerminado(BaseModel):
@@ -333,9 +423,6 @@ class ProductoTerminado(BaseModel):
     Descripcion = db.Column(db.String(255))
     Foto = db.Column(MEDIUMBLOB)
     PrecioVenta = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
-    CostoProduccion = db.Column(
         db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
     )
     StockActual = db.Column(db.Integer, nullable=False, server_default=sql_text("0"))
@@ -355,6 +442,20 @@ class ProductoTerminado(BaseModel):
     )
     ventas_detalle = db.relationship("VentaDetalle", back_populates="producto_terminado", lazy=True)
 
+    @property
+    def CostoProduccion(self):
+        receta = self.receta
+        if receta is None:
+            return Decimal("0.00")
+
+        total = Decimal("0.00")
+        for detalle in receta.detalles:
+            precio_unitario = _costo_unitario_materia(detalle.materia_prima)
+            consumo_total = _decimal_modelo(detalle.CantidadRequerida) + _decimal_modelo(detalle.Merma)
+            total += consumo_total * precio_unitario
+
+        return total.quantize(Decimal("0.01"))
+
 
 class Receta(BaseModel):
     __tablename__ = "Receta"
@@ -364,7 +465,6 @@ class Receta(BaseModel):
         db.ForeignKey("ProductoTerminado.IdProductoTerminado"),
         primary_key=True,
     )
-    Merma = db.Column(db.Numeric(18, 2), nullable=False, server_default=sql_text("0"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
@@ -414,6 +514,7 @@ class RecetaDetalle(BaseModel):
         db.Integer, db.ForeignKey("MateriaPrima.IdMateriaPrima"), nullable=False
     )
     CantidadRequerida = db.Column(db.Numeric(18, 2), nullable=False)
+    Merma = db.Column(db.Numeric(18, 2), nullable=False, server_default=sql_text("0"))
 
     receta = db.relationship("Receta", back_populates="detalles", uselist=False)
     materia_prima = db.relationship("MateriaPrima", back_populates="recetas_detalle", uselist=False)
@@ -549,8 +650,8 @@ class Venta(BaseModel):
     FechaVenta = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
-    TotalVenta = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
+    MetodoPago = db.Column(
+        db.String(20), nullable=False, server_default=sql_text("'EFECTIVO'")
     )
     IdUsuarioRegistro = db.Column(
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
@@ -564,6 +665,11 @@ class Venta(BaseModel):
     )
     detalles = db.relationship("VentaDetalle", back_populates="venta", lazy=True)
 
+    @property
+    def TotalVenta(self):
+        total = sum((_decimal_modelo(detalle.Subtotal) for detalle in self.detalles), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
+
 
 class VentaDetalle(BaseModel):
     __tablename__ = "VentaDetalle"
@@ -575,12 +681,17 @@ class VentaDetalle(BaseModel):
     )
     Cantidad = db.Column(db.Integer, nullable=False)
     PrecioUnitario = db.Column(db.Numeric(18, 2), nullable=False)
-    Subtotal = db.Column(db.Numeric(18, 2), nullable=False)
 
     venta = db.relationship("Venta", back_populates="detalles", uselist=False)
     producto_terminado = db.relationship(
         "ProductoTerminado", back_populates="ventas_detalle", uselist=False
     )
+
+    @property
+    def Subtotal(self):
+        return (_decimal_modelo(self.Cantidad) * _decimal_modelo(self.PrecioUnitario)).quantize(
+            Decimal("0.01")
+        )
 
 
 class CorteVentaDiario(BaseModel):
@@ -588,15 +699,6 @@ class CorteVentaDiario(BaseModel):
 
     IdCorteVentaDiario = db.Column(db.Integer, primary_key=True, autoincrement=True)
     FechaCorte = db.Column(db.Date, nullable=False, unique=True)
-    TotalVentas = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
-    TotalCosto = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
-    UtilidadDiaria = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
@@ -609,6 +711,29 @@ class CorteVentaDiario(BaseModel):
         back_populates="cortes_venta_diario_registrados",
         foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
+
+    @property
+    def TotalVentas(self):
+        total = Decimal("0.00")
+        for venta in Venta.query.filter(db.func.date(Venta.FechaVenta) == self.FechaCorte).all():
+            total += venta.TotalVenta
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def TotalCosto(self):
+        total = Decimal("0.00")
+        ventas = Venta.query.filter(db.func.date(Venta.FechaVenta) == self.FechaCorte).all()
+        for venta in ventas:
+            for detalle in venta.detalles:
+                costo_unitario = (
+                    detalle.producto_terminado.CostoProduccion if detalle.producto_terminado else Decimal("0.00")
+                )
+                total += _decimal_modelo(detalle.Cantidad) * _decimal_modelo(costo_unitario)
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def UtilidadDiaria(self):
+        return (self.TotalVentas - self.TotalCosto).quantize(Decimal("0.01"))
 
 
 class AlertaSistema(BaseModel):

@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask_login import current_user, login_required
 from models import db, MateriaPrima, UnidadMedida, Proveedor, MovimientoMateriaPrima, Usuario
 from sqlalchemy.orm import joinedload
 from decimal import Decimal, InvalidOperation
@@ -24,6 +25,7 @@ def detalles(id):
     return render_template('materia_prima/detalles.html', mp=mp)
 
 @materia_prima_bp.route('/inventario/movimiento/<tipo>')
+@login_required
 def formulario_movimiento(tipo):
     tipo_actual = request.args.get('tipo_mov', tipo).upper()
     
@@ -60,6 +62,7 @@ def formulario_movimiento(tipo):
                            unidades=opciones_unidades)
 
 @materia_prima_bp.route('/inventario/movimiento/registrar', methods=['POST'])
+@login_required
 def registrar_movimiento():
     id_mp = request.form.get('id_mp')
     tipo = request.form.get('tipo').upper()
@@ -67,7 +70,7 @@ def registrar_movimiento():
     unidad_reg = request.form.get('unidad_registro') # L, ML, KG o G
     costo = Decimal(request.form.get('costo') or '0')
     motivo = request.form.get('motivo')
-    id_usuario = session.get('user_id', 1)
+    id_usuario = current_user.IdUsuario
 
     cantidad_final = cantidad_raw
     if unidad_reg in ['L', 'KG']:

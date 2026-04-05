@@ -59,12 +59,12 @@
                 <span class="detail-val td-mono">{{ c.CorreoElectronico }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Teléfono</span>
+                <span class="detail-key">Telefono</span>
                 <span class="detail-val">{{ c.Telefono or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Dirección</span>
-                <span class="detail-val">{{ c.Direccion or '—' }}</span>
+                <span class="detail-key">Direccion</span>
+                <span class="detail-val">{{ c.DireccionFormateada or '—' }}</span>
             </div>
         </div>
     </div>
@@ -76,7 +76,7 @@
                 <span class="detail-key">Compra Online</span>
                 <span class="detail-val">
                     {% if c.PermiteCompraOnline %}
-                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Sí</span>
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Si</span>
                     {% else %}
                     <span class="status-chip status-off"><i class="ph ph-x-circle"></i> No</span>
                     {% endif %}
@@ -97,7 +97,7 @@
                 <span class="detail-val td-mono">{{ c.Identificador or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Contraseña</span>
+                <span class="detail-key">Contrasena</span>
                 <span class="detail-val td-mono" style="letter-spacing:3px;color:var(--muted2)">
                     {% if c.Identificador %}••••••••{% else %}—{% endif %}
                 </span>
