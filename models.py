@@ -190,6 +190,7 @@ class Proveedor(BaseModel):
     NombreEmpresa = db.Column(db.String(150), nullable=False)
     Telefono = db.Column(db.String(30))
     CorreoElectronico = db.Column(db.String(120))
+    Direccion = db.Column(db.String(255))
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")

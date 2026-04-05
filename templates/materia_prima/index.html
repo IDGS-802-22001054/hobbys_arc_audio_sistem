@@ -8,6 +8,7 @@
     
     <div class="header-tools">
         <form action="{{ url_for('materia_prima.listar') }}" method="GET" class="search-container">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="search" placeholder="Buscar Materia Prima" value="{{ search or '' }}">
             <i class="ph ph-magnifying-glass"></i>
         </form>
