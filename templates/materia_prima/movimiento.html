@@ -49,6 +49,7 @@
     </form>
 
     <form action="{{ url_for('materia_prima.registrar_movimiento') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="tipo" value="{{ tipo }}">
         <input type="hidden" name="id_mp" value="{{ info.IdMateriaPrima if info else '' }}">
 

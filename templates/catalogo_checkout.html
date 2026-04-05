@@ -1,0 +1,254 @@
+{% extends "layout_cli.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/catalogo_checkout.css') }}">
+{% endblock %}
+
+{% block page_title %}CHECKOUT{% endblock %}
+
+{% block container %}
+<section class="checkout-page fade-up">
+    <div class="page-header">
+        <div>
+            <p class="section-eyebrow">Compra</p>
+            <h1 class="section-title">Revision final de tu pedido</h1>
+            <p class="section-copy">Confirma los productos, el metodo de pago, la direccion de envio y acepta los terminos antes de registrar la compra.</p>
+        </div>
+        <a href="{{ url_for('catalogo_cliente.catalogo', q=busqueda or '') }}" class="btn btn-outline">
+            <i class="ph ph-arrow-left"></i> Volver al catalogo
+        </a>
+    </div>
+
+    <form method="post" action="{{ url_for('catalogo_cliente.realizar_compra') }}" class="checkout-layout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="q" value="{{ busqueda or '' }}">
+
+        <div class="checkout-main">
+            <section class="checkout-card">
+                <div class="checkout-card-head">
+                    <div>
+                        <p class="section-eyebrow">Carrito</p>
+                        <h2>Detalle del pedido</h2>
+                    </div>
+                    <span class="checkout-badge">{{ resumen.cantidad_total }} articulo(s)</span>
+                </div>
+
+                <div class="checkout-items">
+                    {% for item in carrito %}
+                    <article class="checkout-item">
+                        <div>
+                            <h3>{{ item.nombre }}</h3>
+                            <p>{{ item.cantidad }} u. x ${{ "%.2f"|format(item.precio) }}</p>
+                        </div>
+                        <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="checkout-card">
+                <div class="checkout-card-head">
+                    <div>
+                        <p class="section-eyebrow">Pago</p>
+                        <h2>Metodo de pago</h2>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="tarjeta_guardada_id">Tarjeta guardada</label>
+                    <select id="tarjeta_guardada_id" name="tarjeta_guardada_id" class="form-input">
+                        <option value="">Registrar una tarjeta nueva para esta compra</option>
+                        {% for tarjeta in tarjetas %}
+                        <option value="{{ tarjeta.IdTarjetaCliente }}" {% if tarjeta_guardada_id == tarjeta.IdTarjetaCliente|string %}selected{% endif %}>
+                            {{ tarjeta.Marca }} terminacion {{ tarjeta.Ultimos4 }}{% if tarjeta.EsPredeterminada %} - Predeterminada{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-hint">Si eliges una tarjeta guardada, el formulario de abajo se ignora.</small>
+                </div>
+
+                <div class="saved-cards">
+                    {% for tarjeta in tarjetas %}
+                    <div class="saved-card">
+                        <div>
+                            <strong>{{ tarjeta.Alias or tarjeta.Marca }}</strong>
+                            <p>{{ tarjeta.Titular }}</p>
+                        </div>
+                        <div class="saved-card-meta">
+                            <span>{{ tarjeta.Marca }} {{ tarjeta.Ultimos4 }}</span>
+                            <span>{{ "%02d"|format(tarjeta.MesExpiracion) }}/{{ tarjeta.AnioExpiracion }}</span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="checkout-empty">Aun no tienes tarjetas guardadas.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-grid compact-grid">
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="ph ph-credit-card"></i> Registrar nueva tarjeta
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="alias_tarjeta">Alias</label>
+                                <input id="alias_tarjeta" name="alias_tarjeta" class="form-input" value="{{ nueva_tarjeta.alias }}" placeholder="Ej. Visa personal">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="titular_tarjeta">Titular</label>
+                                <input id="titular_tarjeta" name="titular_tarjeta" class="form-input" value="{{ nueva_tarjeta.titular }}" placeholder="Nombre como aparece en la tarjeta">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="marca_tarjeta">Marca</label>
+                                <select id="marca_tarjeta" name="marca_tarjeta" class="form-input">
+                                    <option value="">Selecciona una marca</option>
+                                    {% for marca in ["Visa", "Mastercard", "American Express", "Otra"] %}
+                                    <option value="{{ marca }}" {% if nueva_tarjeta.marca == marca %}selected{% endif %}>{{ marca }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="numero_tarjeta">Numero de tarjeta</label>
+                                <input id="numero_tarjeta" name="numero_tarjeta" class="form-input" value="{{ nueva_tarjeta.numero }}" inputmode="numeric" autocomplete="cc-number" placeholder="Solo para esta compra o para guardar ultimos 4">
+                                <small class="form-hint">Solo se conserva la terminacion y un token interno cuando decides guardarla.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="mes_expiracion">Mes de expiracion</label>
+                                <select id="mes_expiracion" name="mes_expiracion" class="form-input">
+                                    <option value="">Mes</option>
+                                    {% for mes in range(1, 13) %}
+                                    <option value="{{ mes }}" {% if nueva_tarjeta.mes_expiracion == mes|string %}selected{% endif %}>{{ "%02d"|format(mes) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="anio_expiracion">Anio de expiracion</label>
+                                <select id="anio_expiracion" name="anio_expiracion" class="form-input">
+                                    <option value="">Anio</option>
+                                    {% for anio in anios_expiracion %}
+                                    <option value="{{ anio }}" {% if nueva_tarjeta.anio_expiracion == anio|string %}selected{% endif %}>{{ anio }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <label class="check-row">
+                            <input type="checkbox" name="guardar_tarjeta" {% if nueva_tarjeta.guardar_tarjeta %}checked{% endif %}>
+                            <span>Guardar esta tarjeta para futuras compras</span>
+                        </label>
+                        <label class="check-row">
+                            <input type="checkbox" name="tarjeta_predeterminada" {% if nueva_tarjeta.tarjeta_predeterminada %}checked{% endif %}>
+                            <span>Usar como tarjeta predeterminada</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="checkout-card">
+                <div class="checkout-card-head">
+                    <div>
+                        <p class="section-eyebrow">Envio</p>
+                        <h2>Direccion de envio</h2>
+                    </div>
+                    <span class="checkout-address">{{ cliente.persona.direccion_formateada or "Sin direccion registrada" }}</span>
+                </div>
+
+                <div class="form-grid compact-grid">
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="ph ph-map-pin-line"></i> Datos de envio
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="calle_envio">Calle</label>
+                                <input id="calle_envio" name="calle_envio" class="form-input" value="{{ direccion_envio.calle }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="colonia_envio">Colonia</label>
+                                <input id="colonia_envio" name="colonia_envio" class="form-input" value="{{ direccion_envio.colonia }}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="numero_exterior_envio">Numero exterior</label>
+                                <input id="numero_exterior_envio" name="numero_exterior_envio" class="form-input" value="{{ direccion_envio.numero_exterior }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="numero_interior_envio">Numero interior</label>
+                                <input id="numero_interior_envio" name="numero_interior_envio" class="form-input" value="{{ direccion_envio.numero_interior }}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="codigo_postal_envio">Codigo postal</label>
+                                <input id="codigo_postal_envio" name="codigo_postal_envio" class="form-input" value="{{ direccion_envio.codigo_postal }}" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="checkout-card">
+                <div class="checkout-card-head">
+                    <div>
+                        <p class="section-eyebrow">Legal</p>
+                        <h2>Terminos y condiciones</h2>
+                    </div>
+                </div>
+
+                <div class="terms-box">
+                    <p>Declaro que los datos de envio y pago proporcionados para esta compra son correctos.</p>
+                    <p>Acepto que el sistema registre la venta con base en la disponibilidad real de stock al momento de confirmar.</p>
+                    <p>Entiendo que los productos del carrito pueden ajustarse si cambian existencias antes de cerrar la compra.</p>
+                </div>
+
+                <label class="check-row terms-check">
+                    <input type="checkbox" name="acepto_terminos" {% if nueva_tarjeta.acepto_terminos %}checked{% endif %} required>
+                    <span>Acepto los terminos y condiciones de compra.</span>
+                </label>
+            </section>
+        </div>
+
+        <aside class="checkout-sidebar">
+            <section class="checkout-card checkout-summary">
+                <div class="checkout-card-head">
+                    <div>
+                        <p class="section-eyebrow">Resumen</p>
+                        <h2>Total a pagar</h2>
+                    </div>
+                </div>
+
+                <div class="summary-rows">
+                    <div>
+                        <span>Cliente</span>
+                        <strong>{{ current_user.persona.Nombre }} {{ current_user.persona.Apellidos }}</strong>
+                    </div>
+                    <div>
+                        <span>Articulos</span>
+                        <strong>{{ resumen.cantidad_total }}</strong>
+                    </div>
+                    <div>
+                        <span>Subtotal</span>
+                        <strong>${{ "%.2f"|format(resumen.subtotal) }}</strong>
+                    </div>
+                    <div class="summary-total">
+                        <span>Total</span>
+                        <strong>${{ "%.2f"|format(resumen.total) }}</strong>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-blue checkout-submit" {% if not carrito %}disabled{% endif %}>
+                    Confirmar compra
+                </button>
+            </section>
+        </aside>
+    </form>
+</section>
+{% endblock %}

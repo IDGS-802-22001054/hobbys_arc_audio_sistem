@@ -17,6 +17,7 @@
 
 <div class="form-container fade-up" style="max-width: 800px; margin: 0 auto; background: var(--surface); padding: 40px; border-radius: 20px; border: 1px solid var(--border);">
     <form action="{{ url_for('materia_prima.editar', id=mp.IdMateriaPrima) }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         
         <div class="form-group" style="margin-bottom: 20px;">
             <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">NOMBRE DEL MATERIAL</label>
@@ -29,7 +30,7 @@
                 <input type="text" name="marca" value="{{ mp.Marca }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);">
             </div>
             <div class="form-group">
-                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">PRECIO UNITARIO ($)</label>
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">PRECIO POR KG/L ($)</label>
                 <input type="number" name="precio" step="0.01" value="{{ mp.PrecioUnitario }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
             </div>
         </div>

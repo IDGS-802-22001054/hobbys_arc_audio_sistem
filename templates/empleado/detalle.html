@@ -64,12 +64,12 @@
                 <span class="detail-val td-mono">{{ e.CorreoElectronico }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Teléfono</span>
+                <span class="detail-key">Telefono</span>
                 <span class="detail-val">{{ e.Telefono or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Dirección</span>
-                <span class="detail-val">{{ e.Direccion or '—' }}</span>
+                <span class="detail-key">Direccion</span>
+                <span class="detail-val">{{ e.DireccionFormateada or '—' }}</span>
             </div>
         </div>
     </div>
@@ -104,7 +104,7 @@
                 <span class="detail-val td-mono">{{ e.Identificador or '—' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-key">Contraseña</span>
+                <span class="detail-key">Contrasena</span>
                 <span class="detail-val td-mono">
                     {% if e.Identificador %} •••••••• {% else %} — {% endif %}
                 </span>

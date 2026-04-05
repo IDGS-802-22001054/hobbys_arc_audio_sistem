@@ -525,11 +525,17 @@ textarea {
     border: 1px solid var(--border);
     border-radius: 10px;
     margin-top: 25px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     border-top: 3px solid var(--blue);
 }
 
 .data-table {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
 
 
 

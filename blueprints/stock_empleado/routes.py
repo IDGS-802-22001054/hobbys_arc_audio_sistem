@@ -47,8 +47,15 @@ def _decimal(valor):
     return Decimal(str(valor or 0)).quantize(Decimal("0.01"))
 
 
-def _contexto_base():
-    return {"active": "stock"}
+def _entero_decimal(valor):
+    decimal_valor = Decimal(str(valor or 0))
+    if decimal_valor != decimal_valor.to_integral_value():
+        raise ValueError("Solo se permiten numeros enteros.")
+    return decimal_valor.quantize(Decimal("0.01"))
+
+
+def _contexto_base(active="stock"):
+    return {"active": active}
 
 
 def _obtener_usuario_registro():
@@ -109,8 +116,55 @@ def _serializar_detalle_receta(detalle):
         "materia_prima_id": detalle.IdMateriaPrima,
         "materia_prima": detalle.materia_prima.Nombre if detalle.materia_prima else "Materia prima",
         "cantidad": _decimal(detalle.CantidadRequerida),
+        "merma": _decimal(detalle.Merma),
         "unidad": unidad,
     }
+
+
+def _opciones_unidad_receta(materia_prima):
+    abreviatura = ""
+    if materia_prima and materia_prima.unidad_medida:
+        abreviatura = (materia_prima.unidad_medida.Abreviatura or "").strip().lower()
+
+    if abreviatura == "g":
+        return [
+            {"value": "G", "label": "Gramos (g)"},
+            {"value": "KG", "label": "Kilogramos (Kg)"},
+        ]
+
+    if abreviatura == "ml":
+        return [
+            {"value": "ML", "label": "Mililitros (ml)"},
+            {"value": "L", "label": "Litros (L)"},
+        ]
+
+    return []
+
+
+def _convertir_cantidad_receta(cantidad, unidad_registro, materia_prima):
+    unidad = (unidad_registro or "").strip().upper()
+    opciones = _opciones_unidad_receta(materia_prima)
+    unidades_validas = {opcion["value"] for opcion in opciones}
+
+    if unidad not in unidades_validas:
+        raise ValueError("La unidad seleccionada no corresponde a la materia prima.")
+
+    if unidad in {"KG", "L"}:
+        return (cantidad * Decimal("1000")).quantize(Decimal("0.01"))
+
+    return cantidad.quantize(Decimal("0.01"))
+
+
+def _costo_por_unidad_receta(materia_prima):
+    precio_unitario = _decimal(materia_prima.PrecioUnitario if materia_prima else 0)
+    abreviatura = ""
+    if materia_prima and materia_prima.unidad_medida:
+        abreviatura = (materia_prima.unidad_medida.Abreviatura or "").strip().lower()
+
+    if abreviatura in {"g", "ml"}:
+        return (precio_unitario / Decimal("1000")).quantize(Decimal("0.0001"))
+
+    return precio_unitario
 
 
 def _obtener_imagen_subida():
@@ -149,27 +203,27 @@ def _obtener_contexto_receta(producto, receta=None, detalle_form=None):
         "receta": receta,
         "detalles": detalles,
         "materias_primas": materias,
-        "detalle_form": detalle_form or {"materia_prima_id": "", "cantidad": ""},
-        **_contexto_base(),
+        "materias_primas_config": [
+            {
+                "id": materia.IdMateriaPrima,
+                "nombre": materia.Nombre,
+                "unidad_base": (
+                    (materia.unidad_medida.Abreviatura or "").strip().lower()
+                    if materia.unidad_medida
+                    else ""
+                ),
+                "opciones_unidad": _opciones_unidad_receta(materia),
+            }
+            for materia in materias
+        ],
+        "detalle_form": detalle_form or {
+            "materia_prima_id": "",
+            "cantidad": "",
+            "merma": "",
+            "unidad_registro": "",
+        },
+        **_contexto_base("produccion"),
     }
-
-
-def _calcular_costo_produccion(producto_id):
-    detalles = (
-        db.session.execute(
-            select(RecetaDetalle).where(RecetaDetalle.IdProductoTerminado == producto_id)
-        )
-        .scalars()
-        .all()
-    )
-
-    total = Decimal("0.00")
-    for detalle in detalles:
-        materia_prima = detalle.materia_prima or db.session.get(MateriaPrima, detalle.IdMateriaPrima)
-        precio_unitario = _decimal(materia_prima.PrecioUnitario if materia_prima else 0)
-        total += _decimal(detalle.CantidadRequerida) * precio_unitario
-
-    return total.quantize(Decimal("0.01"))
 
 
 @stock_empleado_bp.route("/stock")
@@ -234,7 +288,7 @@ def nuevo_stock():
                 "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
-                **_contexto_base(),
+                **_contexto_base("produccion"),
             )
 
         try:
@@ -254,7 +308,7 @@ def nuevo_stock():
                 "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
-                **_contexto_base(),
+                **_contexto_base("produccion"),
             )
 
         try:
@@ -263,7 +317,6 @@ def nuevo_stock():
                 Descripcion=descripcion,
                 StockActual=int(request.form.get("stock_actual", 0)),
                 StockMinimo=int(request.form.get("stock_minimo", 0)),
-                CostoProduccion=Decimal("0.00"),
                 PrecioVenta=_decimal(request.form.get("precio_venta")),
                 Foto=imagen,
                 Activo=True,
@@ -283,7 +336,7 @@ def nuevo_stock():
                 "stock/stock_editar.html",
                 producto=producto_form,
                 modo="nuevo",
-                **_contexto_base(),
+                **_contexto_base("produccion"),
             )
 
         try:
@@ -301,7 +354,7 @@ def nuevo_stock():
         "stock/stock_editar.html",
         producto=producto_form,
         modo="nuevo",
-        **_contexto_base(),
+        **_contexto_base("produccion"),
     )
 
 
@@ -359,19 +412,9 @@ def receta_producto(producto_id):
                     **_obtener_contexto_receta(producto, receta),
                 )
 
-            try:
-                merma = _decimal(request.form.get("merma"))
-            except (InvalidOperation, TypeError, ValueError):
-                flash("La merma enviada no es valida.")
-                return render_template(
-                    "stock/receta_producto.html",
-                    **_obtener_contexto_receta(producto, receta),
-                )
-
             if receta is None:
                 receta = Receta(
                     IdProductoTerminado=producto.IdProductoTerminado,
-                    Merma=merma,
                     IdUsuarioRegistro=usuario.IdUsuario,
                     RequiereAprobacion=False,
                     Aprobada=True,
@@ -381,7 +424,6 @@ def receta_producto(producto_id):
                 )
                 db.session.add(receta)
             else:
-                receta.Merma = merma
                 receta.RequiereAprobacion = False
                 receta.Aprobada = True
                 receta.IdUsuarioAprueba = usuario.IdUsuario
@@ -389,7 +431,6 @@ def receta_producto(producto_id):
                 receta.Activa = True
 
             try:
-                producto.CostoProduccion = _calcular_costo_produccion(producto_id)
                 db.session.commit()
                 flash("Receta guardada correctamente.")
                 return redirect(url_for("stock_empleado.receta_producto", producto_id=producto_id))
@@ -399,7 +440,7 @@ def receta_producto(producto_id):
 
         if accion == "agregar_detalle":
             if receta is None:
-                flash("Primero debes guardar la receta general del producto.")
+                flash("Primero debes activar la receta del producto.")
                 return render_template(
                     "stock/receta_producto.html",
                     **_obtener_contexto_receta(
@@ -408,18 +449,34 @@ def receta_producto(producto_id):
                         {
                             "materia_prima_id": request.form.get("materia_prima_id", ""),
                             "cantidad": request.form.get("cantidad_requerida", ""),
+                            "merma": request.form.get("merma_detalle", ""),
+                            "unidad_registro": request.form.get("unidad_registro", ""),
                         },
                     ),
                 )
 
             materia_prima_id = request.form.get("materia_prima_id", type=int)
+            unidad_registro = request.form.get("unidad_registro", "")
             try:
-                cantidad = _decimal(request.form.get("cantidad_requerida"))
+                cantidad = _entero_decimal(request.form.get("cantidad_requerida"))
             except (InvalidOperation, TypeError, ValueError):
                 cantidad = None
+            try:
+                merma_detalle = _entero_decimal(request.form.get("merma_detalle"))
+            except (InvalidOperation, TypeError, ValueError):
+                merma_detalle = None
 
-            if not materia_prima_id or cantidad is None or cantidad <= 0:
-                flash("Selecciona una materia prima y una cantidad valida.")
+            materia_prima = db.session.get(MateriaPrima, materia_prima_id) if materia_prima_id else None
+
+            if (
+                not materia_prima_id
+                or materia_prima is None
+                or cantidad is None
+                or cantidad <= 0
+                or merma_detalle is None
+                or merma_detalle < 0
+            ):
+                flash("Selecciona una materia prima, una cantidad entera valida y una merma valida.")
                 return render_template(
                     "stock/receta_producto.html",
                     **_obtener_contexto_receta(
@@ -428,9 +485,31 @@ def receta_producto(producto_id):
                         {
                             "materia_prima_id": request.form.get("materia_prima_id", ""),
                             "cantidad": request.form.get("cantidad_requerida", ""),
+                            "merma": request.form.get("merma_detalle", ""),
+                            "unidad_registro": unidad_registro,
                         },
                     ),
                 )
+
+            try:
+                cantidad_guardada = _convertir_cantidad_receta(cantidad, unidad_registro, materia_prima)
+            except ValueError as error:
+                flash(str(error))
+                return render_template(
+                    "stock/receta_producto.html",
+                    **_obtener_contexto_receta(
+                        producto,
+                        receta,
+                        {
+                            "materia_prima_id": request.form.get("materia_prima_id", ""),
+                            "cantidad": request.form.get("cantidad_requerida", ""),
+                            "merma": request.form.get("merma_detalle", ""),
+                            "unidad_registro": unidad_registro,
+                        },
+                    ),
+                )
+
+            merma_guardada = merma_detalle.quantize(Decimal("0.01"))
 
             detalle = db.session.execute(
                 select(RecetaDetalle).where(
@@ -439,19 +518,32 @@ def receta_producto(producto_id):
                 )
             ).scalar_one_or_none()
 
-            if detalle is None:
-                detalle = RecetaDetalle(
-                    IdProductoTerminado=producto_id,
-                    IdMateriaPrima=materia_prima_id,
-                    CantidadRequerida=cantidad,
+            if detalle is not None:
+                flash("Esa materia prima ya existe en la receta. No se puede agregar dos veces.")
+                return render_template(
+                    "stock/receta_producto.html",
+                    **_obtener_contexto_receta(
+                        producto,
+                        receta,
+                        {
+                            "materia_prima_id": request.form.get("materia_prima_id", ""),
+                            "cantidad": request.form.get("cantidad_requerida", ""),
+                            "merma": request.form.get("merma_detalle", ""),
+                            "unidad_registro": unidad_registro,
+                        },
+                    ),
                 )
-                db.session.add(detalle)
-            else:
-                detalle.CantidadRequerida = cantidad
+
+            detalle = RecetaDetalle(
+                IdProductoTerminado=producto_id,
+                IdMateriaPrima=materia_prima_id,
+                CantidadRequerida=cantidad_guardada,
+                Merma=merma_guardada,
+            )
+            db.session.add(detalle)
 
             try:
                 db.session.flush()
-                producto.CostoProduccion = _calcular_costo_produccion(producto_id)
                 db.session.commit()
                 flash("Detalle de receta guardado correctamente.")
                 return redirect(url_for("stock_empleado.receta_producto", producto_id=producto_id))
@@ -466,7 +558,6 @@ def receta_producto(producto_id):
                 try:
                     db.session.delete(detalle)
                     db.session.flush()
-                    producto.CostoProduccion = _calcular_costo_produccion(producto_id)
                     db.session.commit()
                     flash("Detalle eliminado correctamente.")
                     return redirect(url_for("stock_empleado.receta_producto", producto_id=producto_id))

@@ -34,7 +34,7 @@
                 </a>
 
                 <div class="nav-section">Mi Cuenta</div>
-                <a href="{{ url_for('clientes.ver_Perfilcliente', id=current_user.IdUsuario) }}" class="nav-item {% if active == 'perfil' %}active{% endif %}">
+                <a href="{{ url_for('clientes.ver_perfil') }}" class="nav-item {% if active == 'perfil' %}active{% endif %}">
                     <i class="ph ph-user-circle"></i> Ver Perfil
                 </a>
             </nav>

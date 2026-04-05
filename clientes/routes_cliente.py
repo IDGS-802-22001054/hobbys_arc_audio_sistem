@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
 from datetime import datetime
-from models import db, Usuario, SesionUsuario, Cliente
+from models import db, Usuario, SesionUsuario, Cliente, Rol
 from forms import LoginForm, ClienteForm
 
 import forms, base64
@@ -13,7 +13,7 @@ import forms, base64
 clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
 
 DESTINOS_POR_ROL = {
-    'cliente':       'catalogo.catalogo',
+    'cliente':       'catalogo_cliente.catalogo',
 }
 
 TAMANO_MAXIMO = 2 * 1024 * 1024
@@ -50,6 +50,23 @@ def foto_a_base64(archivo):
 
     encoded = base64.b64encode(imagen_bytes).decode('utf-8')
     return f'data:image/{tipo};base64,{encoded}'
+
+
+def obtener_rol_cliente_id():
+    rol = db.session.query(Rol).filter(
+        db.func.lower(Rol.Nombre) == 'cliente'
+    ).first()
+    return rol.IdRol if rol else None
+
+
+def _datos_direccion_form(form):
+    return {
+        'calle': (form.calle.data or '').strip() or None,
+        'colonia': (form.colonia.data or '').strip() or None,
+        'numero_exterior': (form.numero_exterior.data or '').strip() or None,
+        'numero_interior': (form.numero_interior.data or '').strip() or None,
+        'codigo_postal': (form.codigo_postal.data or '').strip() or None,
+    }
 
 @clientes_bp.route('/clientes', methods=['GET'])
 def clientes():
@@ -91,20 +108,27 @@ def nuevo_cliente():
             flash('El nombre de usuario es requerido.', 'danger')
             return render_template('cliente/registrar.html', form=form)
 
-        ROL_CLIENTE_ID = 6
+        rol_cliente_id = obtener_rol_cliente_id()
+        if rol_cliente_id is None:
+            flash('No existe el rol Cliente en la tabla Rol.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
         password_hash  = generate_password_hash(password)
 
         try:
+            direccion = _datos_direccion_form(form)
             db.session.execute(
                 text('CALL SP_Clientes_Registrar(:nombre, :apellidos, :correo, '
-                     ':identificador, :password_hash, :id_rol, @id_cliente)'),
+                     ':identificador, :password_hash, :id_rol, '
+                     ':calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, @id_cliente)'),
                 {
                     'nombre':        form.nombre.data,
                     'apellidos':     form.apellidos.data,
                     'correo':        form.correo.data,
                     'identificador': identificador,
                     'password_hash': password_hash,
-                    'id_rol':        ROL_CLIENTE_ID,
+                    'id_rol':        rol_cliente_id,
+                    **direccion,
                 }
             )
             db.session.commit()
@@ -129,7 +153,7 @@ def nuevo_cliente():
 
                 rol = usuario.rol.Nombre.lower().strip()
                 flash('Cuenta creada correctamente. ¡Bienvenido!', 'success')
-                return redirect(url_for(DESTINOS_POR_ROL.get(rol, 'auth.login')))
+                return redirect(url_for('catalogo_cliente.catalogo'))
 
         except OperationalError as e:
             db.session.rollback()
@@ -166,22 +190,27 @@ def editar_cliente(id):
         form.apellidos.data = fila.Apellidos
         form.correo.data    = fila.CorreoElectronico
         form.telefono.data  = fila.Telefono
-        form.direccion.data = fila.Direccion
+        form.calle.data = fila.Calle
+        form.colonia.data = fila.Colonia
+        form.numero_exterior.data = fila.NumeroExterior
+        form.numero_interior.data = fila.NumeroInterior
+        form.codigo_postal.data = fila.CodigoPostal
 
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
+        direccion = _datos_direccion_form(form)
 
         db.session.execute(
             text('CALL SP_Clientes_Editar(:id, :nombre, :apellidos, '
-                 ':telefono, :correo, :direccion, :foto)'),
+                 ':telefono, :correo, :calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, :foto)'),
             {
                 'id':        id,
                 'nombre':    form.nombre.data.strip(),
                 'apellidos': form.apellidos.data.strip(),
                 'telefono':  form.telefono.data,
                 'correo':    form.correo.data.strip(),
-                'direccion': form.direccion.data,
                 'foto':      nueva_foto,
+                **direccion,
             }
         )
         db.session.commit()
@@ -239,6 +268,19 @@ def logout():
     logout_user()
     return redirect(url_for('auth.login'))
 
+@clientes_bp.route('/perfil')
+@login_required
+def ver_perfil():
+    cliente = db.session.query(Cliente).filter_by(
+        IdPersona=current_user.IdPersona
+    ).first_or_404()
+    return render_template(
+        'cliente/verPerfil.html',
+        cliente=cliente,
+        persona=current_user.persona,
+        active='perfil',
+    )
+
 @clientes_bp.route('/perfil/editar', methods=['GET', 'POST'])
 @login_required
 def editar_perfil():
@@ -254,11 +296,16 @@ def editar_perfil():
         form.apellidos.data = persona.Apellidos
         form.telefono.data = persona.Telefono
         form.correo.data = persona.CorreoElectronico
-        form.direccion.data = persona.Direccion
+        form.calle.data = persona.Calle
+        form.colonia.data = persona.Colonia
+        form.numero_exterior.data = persona.NumeroExterior
+        form.numero_interior.data = persona.NumeroInterior
+        form.codigo_postal.data = persona.CodigoPostal
         form.identificador.data = current_user.Identificador
 
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
+        direccion = _datos_direccion_form(form)
 
         password_hash = None
         if form.password.data:
@@ -266,7 +313,7 @@ def editar_perfil():
 
         db.session.execute(
             text('CALL SP_Perfil_ActualizarCliente(:id_cliente, :nombre, :apellidos, '
-                 ':telefono, :correo, :direccion, :foto, '
+                 ':telefono, :correo, :calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, :foto, '
                  ':identificador, :password_hash)'),
             {
                 'id_cliente': cliente.IdCliente,
@@ -274,14 +321,14 @@ def editar_perfil():
                 'apellidos': form.apellidos.data.strip(),
                 'telefono': form.telefono.data,
                 'correo': form.correo.data.strip(),
-                'direccion': form.direccion.data,
                 'foto': nueva_foto,
                 'identificador': form.identificador.data.strip(),
                 'password_hash': password_hash,
+                **direccion,
             }
         )
         db.session.commit()
         flash('Perfil actualizado correctamente.')
-        return redirect(url_for('catalogo.catalogo'))
+        return redirect(url_for('catalogo_cliente.catalogo'))
 
-    return render_template('cliente/editarPerfil.html', form=form)
+    return render_template('cliente/editarPerfil.html', form=form, active='perfil')
