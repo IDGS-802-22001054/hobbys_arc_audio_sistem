@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.compras import compras_bp
+from blueprints.ventas.routes import ventas_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
 from blueprints.stock_empleado import stock_empleado_bp
@@ -42,6 +43,7 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(proveedores_bp)
     aplicacion.register_blueprint(materia_prima_bp)
     aplicacion.register_blueprint(compras_bp)
+    aplicacion.register_blueprint(ventas_bp)
     aplicacion.register_blueprint(dashboard_bp)
     aplicacion.register_blueprint(auth_bp)
     aplicacion.register_blueprint(empleados_bp)
@@ -84,6 +86,7 @@ def crear_app():
     db.init_app(aplicacion)
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
+    login_manager.init_app(aplicacion)
 
     login_manager.init_app(aplicacion)
 
@@ -99,4 +102,4 @@ app = crear_app()
 
 
 if __name__ == "__main__":
-    app.run(debug=app.config.get("DEBUG", False))
+    app.run(debug=app.config.get("DEBUG", True))

@@ -49,7 +49,7 @@
             {% for prod in producciones_aprobadas %}
             <div class="kanban-card fade-up">
                 <div class="kanban-card-top">
-                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-title">{{ prod.NombreProducto }}</span>
                     <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
                 </div>
                 <div class="kanban-card-rows">
@@ -63,7 +63,7 @@
                     </div>
                     <div class="kanban-card-row">
                         <span class="kanban-card-lbl">Registrado por:</span>
-                        <span class="kanban-card-val">{{ prod.usuario_registro.persona.Nombre }}</span>
+                        <span class="kanban-card-val">{{ prod.NombreRegistro }} {{ prod.ApellidosRegistro }}</span>
                     </div>
                 </div>
                 <div class="kanban-card-actions">
@@ -94,7 +94,7 @@
             {% for prod in producciones_proceso %}
             <div class="kanban-card fade-up">
                 <div class="kanban-card-top">
-                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-title">{{ prod.NombreProducto }}</span>
                     <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
                 </div>
                 <div class="kanban-card-rows">
@@ -144,7 +144,7 @@
             {% for prod in producciones_completadas %}
             <div class="kanban-card kanban-card--done fade-up">
                 <div class="kanban-card-top">
-                    <span class="kanban-card-title">{{ prod.producto_terminado.Nombre }}</span>
+                    <span class="kanban-card-title">{{ prod.NombreProducto }}</span>
                     <span class="kanban-card-id">#{{ prod.IdProduccion }}</span>
                 </div>
                 <div class="kanban-card-rows">

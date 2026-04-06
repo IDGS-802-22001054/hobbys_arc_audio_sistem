@@ -17,11 +17,19 @@ DESTINOS_POR_ROL = {
 }
 
 
+def _obtener_destino_por_rol(usuario):
+    if usuario and usuario.persona and usuario.persona.cliente:
+        return 'catalogo_cliente.catalogo'
+
+    rol = (usuario.rol.Nombre if usuario and usuario.rol else '').lower().strip()
+    return DESTINOS_POR_ROL.get(rol)
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        rol = current_user.rol.Nombre.lower().strip()
-        return redirect(url_for(DESTINOS_POR_ROL.get(rol, 'auth.login')))
+        destino = _obtener_destino_por_rol(current_user)
+        return redirect(url_for(destino or 'auth.login'))
 
     form = LoginForm(request.form)
 
@@ -41,9 +49,9 @@ def login():
             flash('Tu cuenta está desactivada, contacta al administrador', 'warning')
             return render_template('index.html', form=form)
 
-        rol = usuario.rol.Nombre.lower().strip()
+        destino = _obtener_destino_por_rol(usuario)
 
-        if rol not in DESTINOS_POR_ROL:
+        if not destino:
             flash('Rol no reconocido, contacta al administrador', 'danger')
             return render_template('index.html', form=form)
 
@@ -65,7 +73,7 @@ def login():
             return render_template('index.html', form=form)
 
         login_user(usuario, remember=False)
-        return redirect(url_for(DESTINOS_POR_ROL[rol]))
+        return redirect(url_for(destino))
 
     return render_template('index.html', form=form)
 

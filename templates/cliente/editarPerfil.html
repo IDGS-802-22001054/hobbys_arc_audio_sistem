@@ -56,9 +56,30 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                {{ form.direccion.label(class="form-label") }}
-                {{ form.direccion(class="form-input") }}
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.calle.label(class="form-label") }}
+                    {{ form.calle(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.colonia.label(class="form-label") }}
+                    {{ form.colonia(class="form-input") }}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.numero_exterior.label(class="form-label") }}
+                    {{ form.numero_exterior(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.numero_interior.label(class="form-label") }}
+                    {{ form.numero_interior(class="form-input") }}
+                </div>
+                <div class="form-group">
+                    {{ form.codigo_postal.label(class="form-label") }}
+                    {{ form.codigo_postal(class="form-input") }}
+                </div>
             </div>
         </div>
 

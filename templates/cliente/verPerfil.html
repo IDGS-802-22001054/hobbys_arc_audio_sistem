@@ -1,13 +1,11 @@
 {% extends "layout_cli.html" %}
-
 {% block page_title %}Mi Perfil{% endblock %}
-
 {% block container %}
 
 <div class="page-header fade-up">
     <h2 class="page-header-title">MI PERFIL</h2>
     <div class="page-header-actions">
-        <a href="{{ url_for('clientes.editar_perfil', id=current_user.IdUsuario) }}" class="btn btn-blue">
+        <a href="{{ url_for('clientes.editar_perfil') }}" class="btn btn-blue">
             <i class="ph ph-pencil-simple"></i> Editar
         </a>
         <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-outline">
@@ -16,13 +14,13 @@
     </div>
 </div>
 
-<div class="detail-grid fade-up" style="animation-delay:0.07s">
+<div class="fade-up" style="animation-delay:0.07s; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
 
-    <div class="detail-card">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px;">
         <div class="detail-card-header">
-            <div class="detail-avatar">
+            <div style="width:64px; height:64px; border-radius:50%; background:var(--card2); border:2px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--muted2); font-size:30px; overflow:hidden; flex-shrink:0;">
                 {% if persona.Foto %}
-                <img src="{{ persona.Foto }}" alt="{{ persona.Nombre }}">
+                <img src="{{ persona.Foto }}" alt="{{ persona.Nombre }}" style="width:100%; height:100%; object-fit:cover;">
                 {% else %}
                 <i class="ph ph-user"></i>
                 {% endif %}
@@ -43,7 +41,7 @@
         </div>
     </div>
 
-    <div class="detail-card">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px;">
         <div class="detail-section-title"><i class="ph ph-identification-card"></i> Datos Personales</div>
         <div class="detail-rows">
             <div class="detail-row">
@@ -60,7 +58,7 @@
             </div>
             <div class="detail-row">
                 <span class="detail-key">Dirección</span>
-                <span class="detail-val">{{ persona.Direccion or '—' }}</span>
+                <span class="detail-val">{{ persona.direccion_formateada or '—' }}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-key">Miembro desde</span>
@@ -69,7 +67,7 @@
         </div>
     </div>
 
-    <div class="detail-card">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px;">
         <div class="detail-section-title"><i class="ph ph-lock-key"></i> Acceso al Sistema</div>
         <div class="detail-rows">
             <div class="detail-row">

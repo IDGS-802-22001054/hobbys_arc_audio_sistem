@@ -1,16 +1,28 @@
 from base64 import b64encode
+from datetime import date
 from decimal import Decimal
+from uuid import uuid4
 
 from flask import current_app, flash, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Cliente, ProductoTerminado, Usuario, Venta, VentaDetalle, db
+from models import Cliente, ProductoTerminado, TarjetaCliente, Usuario, db
+from services.ventas import registrar_venta_por_procedimiento
 
 from . import catalogo_cliente_bp
 
 COLORES_TARJETA = ("red", "yellow", "green", "blue")
 CLAVE_CARRITO = "catalogo_cliente_carrito"
+ENDPOINTS_CATALOGO_PROTEGIDOS = {
+    "catalogo_cliente.catalogo",
+    "catalogo_cliente.agregar_al_carrito",
+    "catalogo_cliente.actualizar_carrito",
+    "catalogo_cliente.checkout",
+    "catalogo_cliente.realizar_compra",
+    "catalogo_cliente.layout",
+}
 
 
 def _mime_imagen(contenido):
@@ -36,6 +48,11 @@ def _precio_decimal(valor):
     if isinstance(valor, Decimal):
         return valor
     return Decimal(str(valor or 0)).quantize(Decimal("0.01"))
+
+
+def _texto_limpio(valor):
+    texto = (valor or "").strip()
+    return texto or None
 
 
 def _normalizar_carrito():
@@ -174,11 +191,194 @@ def _obtener_usuario_registro():
     return db.session.execute(consulta).scalar_one_or_none()
 
 
-def _obtener_cliente_configurado():
-    cliente_id = current_app.config.get("CATALOGO_CLIENTE_ID")
-    if not cliente_id:
+def _obtener_cliente_autenticado():
+    if not current_user.is_authenticated:
         return None
-    return db.session.get(Cliente, cliente_id)
+
+    persona = getattr(current_user, "persona", None)
+    if not persona:
+        return None
+
+    cliente = getattr(persona, "cliente", None)
+    if cliente:
+        return cliente
+
+    consulta = select(Cliente).where(Cliente.IdPersona == current_user.IdPersona)
+    return db.session.execute(consulta).scalar_one_or_none()
+
+
+def _obtener_tarjetas_cliente(cliente):
+    if cliente is None:
+        return []
+
+    tarjetas = [tarjeta for tarjeta in cliente.tarjetas if tarjeta.Activa]
+    return sorted(
+        tarjetas,
+        key=lambda tarjeta: (
+            not bool(tarjeta.EsPredeterminada),
+            -(tarjeta.IdTarjetaCliente or 0),
+        ),
+    )
+
+
+def _direccion_envio_actual(persona, form_data=None):
+    form_data = form_data or {}
+    return {
+        "calle": (form_data.get("calle_envio") or getattr(persona, "Calle", None) or "").strip(),
+        "colonia": (form_data.get("colonia_envio") or getattr(persona, "Colonia", None) or "").strip(),
+        "numero_exterior": (
+            form_data.get("numero_exterior_envio") or getattr(persona, "NumeroExterior", None) or ""
+        ).strip(),
+        "numero_interior": (
+            form_data.get("numero_interior_envio") or getattr(persona, "NumeroInterior", None) or ""
+        ).strip(),
+        "codigo_postal": (
+            form_data.get("codigo_postal_envio") or getattr(persona, "CodigoPostal", None) or ""
+        ).strip(),
+    }
+
+
+def _contexto_checkout(busqueda="", form_data=None):
+    carrito, resumen = _obtener_detalle_carrito()
+    cliente = _obtener_cliente_autenticado()
+    persona = getattr(cliente, "persona", None) or getattr(current_user, "persona", None)
+    tarjetas = _obtener_tarjetas_cliente(cliente)
+
+    tarjeta_guardada_id = ""
+    if form_data is not None:
+        tarjeta_guardada_id = (form_data.get("tarjeta_guardada_id") or "").strip()
+    elif tarjetas:
+        tarjeta_guardada_id = str(tarjetas[0].IdTarjetaCliente)
+
+    return {
+        "carrito": carrito,
+        "resumen": resumen,
+        "busqueda": busqueda,
+        "cliente": cliente,
+        "direccion_envio": _direccion_envio_actual(persona, form_data),
+        "tarjetas": tarjetas,
+        "tarjeta_guardada_id": tarjeta_guardada_id,
+        "nueva_tarjeta": {
+            "alias": (form_data.get("alias_tarjeta") or "").strip() if form_data else "",
+            "titular": (form_data.get("titular_tarjeta") or "").strip() if form_data else "",
+            "marca": (form_data.get("marca_tarjeta") or "").strip() if form_data else "",
+            "numero": (form_data.get("numero_tarjeta") or "").strip() if form_data else "",
+            "mes_expiracion": (form_data.get("mes_expiracion") or "").strip() if form_data else "",
+            "anio_expiracion": (form_data.get("anio_expiracion") or "").strip() if form_data else "",
+            "guardar_tarjeta": bool(form_data.get("guardar_tarjeta")) if form_data else False,
+            "tarjeta_predeterminada": bool(form_data.get("tarjeta_predeterminada")) if form_data else False,
+            "acepto_terminos": bool(form_data.get("acepto_terminos")) if form_data else False,
+        },
+        "anios_expiracion": list(range(date.today().year, date.today().year + 15)),
+        "active": "catalogo",
+        "usuario_iniciales": "RC",
+    }
+
+
+def _validar_direccion_envio(form_data):
+    direccion = {
+        "calle": _texto_limpio(form_data.get("calle_envio")),
+        "colonia": _texto_limpio(form_data.get("colonia_envio")),
+        "numero_exterior": _texto_limpio(form_data.get("numero_exterior_envio")),
+        "numero_interior": _texto_limpio(form_data.get("numero_interior_envio")),
+        "codigo_postal": _texto_limpio(form_data.get("codigo_postal_envio")),
+    }
+
+    if not direccion["calle"] or not direccion["colonia"] or not direccion["numero_exterior"] or not direccion["codigo_postal"]:
+        raise ValueError(
+            "Completa la direccion de envio con calle, colonia, numero exterior y codigo postal."
+        )
+
+    return direccion
+
+
+def _resolver_tarjeta_checkout(cliente, form_data):
+    tarjeta_guardada_id = (form_data.get("tarjeta_guardada_id") or "").strip()
+    tarjetas = _obtener_tarjetas_cliente(cliente)
+
+    if tarjeta_guardada_id:
+        try:
+            tarjeta_id = int(tarjeta_guardada_id)
+        except (TypeError, ValueError) as error:
+            raise ValueError("La tarjeta seleccionada no es valida.") from error
+
+        tarjeta = next(
+            (item for item in tarjetas if item.IdTarjetaCliente == tarjeta_id),
+            None,
+        )
+        if tarjeta is None:
+            raise ValueError("La tarjeta seleccionada ya no esta disponible.")
+        return {
+            "tipo": "guardada",
+            "tarjeta": tarjeta,
+            "guardar_tarjeta": False,
+            "tarjeta_predeterminada": False,
+            "nueva_tarjeta": None,
+        }
+
+    numero_tarjeta = "".join(
+        caracter for caracter in (form_data.get("numero_tarjeta") or "") if caracter.isdigit()
+    )
+    titular = _texto_limpio(form_data.get("titular_tarjeta"))
+    marca = _texto_limpio(form_data.get("marca_tarjeta"))
+    alias = _texto_limpio(form_data.get("alias_tarjeta"))
+
+    try:
+        mes_expiracion = int(form_data.get("mes_expiracion", "0"))
+        anio_expiracion = int(form_data.get("anio_expiracion", "0"))
+    except (TypeError, ValueError) as error:
+        raise ValueError("La fecha de expiracion de la tarjeta no es valida.") from error
+
+    if not numero_tarjeta and not titular and not marca:
+        raise ValueError("Selecciona una tarjeta guardada o registra una nueva para continuar.")
+
+    if len(numero_tarjeta) < 13 or len(numero_tarjeta) > 19:
+        raise ValueError("El numero de tarjeta no es valido.")
+
+    if not titular or not marca:
+        raise ValueError("Completa el titular y la marca de la tarjeta.")
+
+    if mes_expiracion < 1 or mes_expiracion > 12:
+        raise ValueError("El mes de expiracion no es valido.")
+
+    hoy = date.today()
+    if anio_expiracion < hoy.year or (
+        anio_expiracion == hoy.year and mes_expiracion < hoy.month
+    ):
+        raise ValueError("La tarjeta ya esta vencida.")
+
+    guardar_tarjeta = bool(form_data.get("guardar_tarjeta"))
+    usar_predeterminada = bool(form_data.get("tarjeta_predeterminada"))
+
+    return {
+        "tipo": "nueva",
+        "tarjeta": None,
+        "guardar_tarjeta": guardar_tarjeta,
+        "tarjeta_predeterminada": usar_predeterminada,
+        "nueva_tarjeta": {
+            "Alias": alias,
+            "Titular": titular,
+            "Marca": marca,
+            "Ultimos4": numero_tarjeta[-4:],
+            "MesExpiracion": mes_expiracion,
+            "AnioExpiracion": anio_expiracion,
+        },
+    }
+
+
+@catalogo_cliente_bp.before_request
+def _proteger_catalogo_cliente():
+    if request.endpoint not in ENDPOINTS_CATALOGO_PROTEGIDOS:
+        return None
+
+    if not current_user.is_authenticated:
+        return current_app.login_manager.unauthorized()
+
+    if _obtener_cliente_autenticado() is None:
+        flash("Solo los clientes pueden acceder al catalogo.", "error")
+        return redirect(url_for("auth.login"))
+
+    return None
 
 
 def obtener_contexto_catalogo(busqueda=""):
@@ -206,6 +406,17 @@ def obtener_contexto_catalogo(busqueda=""):
 def catalogo():
     busqueda = request.args.get("q", "").strip()
     return render_template("catalogo/catalogo.html", **obtener_contexto_catalogo(busqueda))
+
+
+@catalogo_cliente_bp.route("/catalogo/checkout")
+def checkout():
+    busqueda = request.args.get("q", "").strip()
+    carrito = _normalizar_carrito()
+    if not carrito:
+        flash("Tu carrito esta vacio.", "error")
+        return redirect(_url_catalogo(busqueda))
+
+    return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda))
 
 
 @catalogo_cliente_bp.post("/catalogo/carrito/agregar")
@@ -294,6 +505,7 @@ def actualizar_carrito():
 
 
 @catalogo_cliente_bp.post("/catalogo/compra")
+@login_required
 def realizar_compra():
     busqueda = request.form.get("q", "").strip()
     carrito = _normalizar_carrito()
@@ -306,65 +518,76 @@ def realizar_compra():
         usuario = _obtener_usuario_registro()
         if usuario is None:
             flash("No hay un usuario disponible para registrar la venta.", "error")
-            return redirect(_url_catalogo(busqueda))
+            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
 
-        cliente = _obtener_cliente_configurado()
-        consulta = (
-            select(ProductoTerminado)
-            .where(ProductoTerminado.IdProductoTerminado.in_(carrito.keys()))
-            .with_for_update()
+        cliente = _obtener_cliente_autenticado()
+        if cliente is None:
+            flash("No se encontro un cliente asociado a tu usuario.", "error")
+            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
+
+        if not request.form.get("acepto_terminos"):
+            raise ValueError("Debes aceptar los terminos y condiciones para continuar.")
+
+        direccion_envio = _validar_direccion_envio(request.form)
+        tarjeta_checkout = _resolver_tarjeta_checkout(cliente, request.form)
+
+        registrar_venta_por_procedimiento(
+            id_cliente=cliente.IdCliente,
+            id_usuario=usuario.IdUsuario,
+            metodo_pago="TARJETA",
+            carrito=carrito,
         )
-        productos = {
-            producto.IdProductoTerminado: producto
-            for producto in db.session.execute(consulta).scalars().all()
-        }
 
-        venta = Venta(
-            IdCliente=cliente.IdCliente if cliente else None,
-            TotalVenta=Decimal("0.00"),
-            IdUsuarioRegistro=usuario.IdUsuario,
-        )
-        db.session.add(venta)
-        db.session.flush()
+        try:
+            persona = cliente.persona
+            persona.Calle = direccion_envio["calle"]
+            persona.Colonia = direccion_envio["colonia"]
+            persona.NumeroExterior = direccion_envio["numero_exterior"]
+            persona.NumeroInterior = direccion_envio["numero_interior"]
+            persona.CodigoPostal = direccion_envio["codigo_postal"]
 
-        total = Decimal("0.00")
-        for producto_id, cantidad in carrito.items():
-            producto = productos.get(producto_id)
-            if producto is None or not producto.Activo:
-                raise ValueError("Uno de los productos del carrito ya no esta disponible.")
+            if tarjeta_checkout["guardar_tarjeta"] and tarjeta_checkout["nueva_tarjeta"]:
+                tarjetas = _obtener_tarjetas_cliente(cliente)
+                if tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas:
+                    for tarjeta in tarjetas:
+                        tarjeta.EsPredeterminada = False
 
-            stock_disponible = max(int(producto.StockActual or 0), 0)
-            if cantidad > stock_disponible:
-                raise ValueError(f"Stock insuficiente para {producto.Nombre}.")
-
-            precio = _precio_decimal(producto.PrecioVenta)
-            subtotal = precio * cantidad
-            total += subtotal
-            producto.StockActual = stock_disponible - cantidad
-
-            db.session.add(
-                VentaDetalle(
-                    IdVenta=venta.IdVenta,
-                    IdProductoTerminado=producto.IdProductoTerminado,
-                    Cantidad=cantidad,
-                    PrecioUnitario=precio,
-                    Subtotal=subtotal,
+                nueva_tarjeta = tarjeta_checkout["nueva_tarjeta"]
+                db.session.add(
+                    TarjetaCliente(
+                        IdCliente=cliente.IdCliente,
+                        Alias=nueva_tarjeta["Alias"],
+                        Titular=nueva_tarjeta["Titular"],
+                        Marca=nueva_tarjeta["Marca"],
+                        Ultimos4=nueva_tarjeta["Ultimos4"],
+                        MesExpiracion=nueva_tarjeta["MesExpiracion"],
+                        AnioExpiracion=nueva_tarjeta["AnioExpiracion"],
+                        TokenPasarela=f"manual_{uuid4().hex}",
+                        EsPredeterminada=tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas,
+                    )
                 )
+
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                "La compra se registro, pero no fue posible actualizar la direccion o guardar la tarjeta."
+            )
+            flash(
+                "Compra registrada correctamente, pero no fue posible actualizar la direccion o guardar la tarjeta.",
+                "warning",
             )
 
-        venta.TotalVenta = total
-        db.session.commit()
         _guardar_carrito({})
         flash("Compra registrada correctamente.", "success")
+        return redirect(_url_catalogo(busqueda))
     except ValueError as error:
-        db.session.rollback()
         flash(str(error), "error")
+        return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
     except SQLAlchemyError:
-        db.session.rollback()
         current_app.logger.exception("No fue posible registrar la compra.")
         flash("No fue posible registrar la compra en la base de datos.", "error")
-
-    return redirect(_url_catalogo(busqueda))
+        return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
 
 
 @catalogo_cliente_bp.route("/layout")

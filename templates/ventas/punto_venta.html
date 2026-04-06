@@ -1,0 +1,224 @@
+{% extends "layout_emp.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ventas.css') }}">
+{% endblock %}
+
+{% block page_title %}PUNTO DE VENTA{% endblock %}
+
+{% block container %}
+<section class="sales-page fade-up">
+    <div class="sales-header">
+        <div>
+            <p class="section-eyebrow">Ventas</p>
+            <h1 class="section-title">Punto de venta en mostrador</h1>
+            <p class="section-copy">Genera ventas desde el stock disponible y registra el pago en efectivo o con tarjeta.</p>
+        </div>
+
+        <form class="catalog-search" method="get" action="{{ url_for('ventas.ventas') }}">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="search" name="q" placeholder="Buscar producto" value="{{ busqueda or '' }}">
+        </form>
+    </div>
+
+    <div class="sales-layout">
+        <div class="sales-grid">
+            {% for producto in productos %}
+            <article class="sale-product-card {% if producto.stock <= 0 %}is-empty{% endif %}">
+                <div class="sale-product-top">
+                    <span class="sale-stock">Stock {{ producto.stock }}</span>
+                    <strong>${{ "%.2f"|format(producto.precio) }}</strong>
+                </div>
+
+                <div class="sale-product-body">
+                    <h3>{{ producto.nombre }}</h3>
+                    <p>{{ producto.descripcion }}</p>
+                </div>
+
+                <form method="post" action="{{ url_for('ventas.agregar_al_carrito') }}" class="sale-product-action">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                    <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                    <button type="submit" class="btn btn-blue sale-add-btn" {% if producto.stock <= 0 %}disabled{% endif %}>
+                        <i class="ph ph-plus-circle"></i> Agregar
+                    </button>
+                </form>
+            </article>
+            {% else %}
+            <div class="empty-state">
+                <i class="ph ph-package"></i>
+                <h3>No se encontraron productos</h3>
+                <p>No hay productos activos o el filtro no devolvio coincidencias.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <aside class="sales-panel">
+            <div class="sales-panel-head">
+                <div class="cart-title">
+                    <i class="ph ph-cash-register"></i>
+                    <h2>Venta actual</h2>
+                </div>
+            </div>
+
+            <div class="cart-items">
+                {% for item in carrito %}
+                <div class="cart-item-card">
+                    <div class="cart-item-head">
+                        <span>{{ item.nombre }}</span>
+                        <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
+                    </div>
+
+                    <div class="cart-item-detail">
+                        <span>{{ item.cantidad }} u. x ${{ "%.2f"|format(item.precio) }}</span>
+                        <span>Stock: {{ item.stock }}</span>
+                    </div>
+
+                    <div class="cart-item-actions">
+                        <form method="post" action="{{ url_for('ventas.actualizar_carrito') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="restar">
+                            <button type="submit" class="cart-qty-btn" aria-label="Restar unidad">
+                                <i class="ph ph-minus"></i>
+                            </button>
+                        </form>
+
+                        <span class="cart-qty">{{ item.cantidad }}</span>
+
+                        <form method="post" action="{{ url_for('ventas.actualizar_carrito') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="sumar">
+                            <button type="submit" class="cart-qty-btn" aria-label="Sumar unidad" {% if item.cantidad >= item.stock %}disabled{% endif %}>
+                                <i class="ph ph-plus"></i>
+                            </button>
+                        </form>
+
+                        <form method="post" action="{{ url_for('ventas.actualizar_carrito') }}" class="cart-remove-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="producto_id" value="{{ item.id }}">
+                            <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                            <input type="hidden" name="accion" value="eliminar">
+                            <button type="submit" class="cart-remove-btn" aria-label="Eliminar producto">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p class="cart-empty">Aun no hay productos agregados a la venta.</p>
+                {% endfor %}
+            </div>
+
+            <form method="post" action="{{ url_for('ventas.registrar_venta') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="q" value="{{ busqueda or '' }}">
+
+                <div class="sales-form-section">
+                    <span class="form-label">Tipo de cliente</span>
+                    <label class="payment-choice {% if tipo_cliente == 'MOSTRADOR' %}is-selected{% endif %}">
+                        <input type="radio" name="tipo_cliente" value="MOSTRADOR" {% if tipo_cliente == 'MOSTRADOR' %}checked{% endif %}>
+                        <span>
+                            <strong>Venta a mostrador</strong>
+                            <small>
+                                Se registra con el cliente
+                                {{ cliente_mostrador.persona.Nombre ~ ' ' ~ cliente_mostrador.persona.Apellidos if cliente_mostrador and cliente_mostrador.persona else 'Venta mostrador' }}.
+                            </small>
+                        </span>
+                    </label>
+                    <label class="payment-choice {% if tipo_cliente == 'REGISTRADO' %}is-selected{% endif %}">
+                        <input type="radio" name="tipo_cliente" value="REGISTRADO" {% if tipo_cliente == 'REGISTRADO' %}checked{% endif %}>
+                        <span>
+                            <strong>Cliente registrado</strong>
+                            <small>Asocia la venta a un cliente real ya dado de alta.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="sales-form-section {% if tipo_cliente == 'MOSTRADOR' %}is-disabled{% endif %}" id="cliente-registrado-section">
+                    <label class="form-label" for="cliente_id">Cliente registrado</label>
+                    <select id="cliente_id" name="cliente_id" class="form-input" {% if tipo_cliente == 'MOSTRADOR' %}disabled{% endif %}>
+                        <option value="">Selecciona un cliente</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if cliente_id == cliente.id|string %}selected{% endif %}>
+                            {{ cliente.nombre }}{% if cliente.correo %} - {{ cliente.correo }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="form-hint">Este campo solo se usa cuando eliges cliente registrado.</small>
+                </div>
+
+                <div class="sales-form-section">
+                    <span class="form-label">Metodo de pago</span>
+                    <label class="payment-choice {% if metodo_pago == 'EFECTIVO' %}is-selected{% endif %}">
+                        <input type="radio" name="metodo_pago" value="EFECTIVO" {% if metodo_pago == 'EFECTIVO' %}checked{% endif %}>
+                        <span>
+                            <strong>Efectivo</strong>
+                            <small>Pago directo en mostrador.</small>
+                        </span>
+                    </label>
+                    <label class="payment-choice {% if metodo_pago == 'TARJETA' %}is-selected{% endif %}">
+                        <input type="radio" name="metodo_pago" value="TARJETA" {% if metodo_pago == 'TARJETA' %}checked{% endif %}>
+                        <span>
+                            <strong>Tarjeta</strong>
+                            <small>Cobro con terminal o lector.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="cart-summary">
+                    <div>
+                        <span>Articulos</span>
+                        <strong>{{ resumen.cantidad_total }}</strong>
+                    </div>
+                    <div>
+                        <span>Subtotal</span>
+                        <strong>${{ "%.2f"|format(resumen.subtotal) }}</strong>
+                    </div>
+                    <div>
+                        <span>Total</span>
+                        <strong>${{ "%.2f"|format(resumen.total) }}</strong>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-blue cart-action" {% if not carrito %}disabled{% endif %}>
+                    Registrar venta
+                </button>
+            </form>
+        </aside>
+    </div>
+</section>
+
+<script>
+    (function () {
+        const radiosTipoCliente = document.querySelectorAll('input[name="tipo_cliente"]');
+        const clienteSelect = document.getElementById('cliente_id');
+        const clienteSection = document.getElementById('cliente-registrado-section');
+
+        if (!clienteSelect || !clienteSection || !radiosTipoCliente.length) {
+            return;
+        }
+
+        function actualizarEstadoCliente() {
+            const seleccion = document.querySelector('input[name="tipo_cliente"]:checked');
+            const esMostrador = !seleccion || seleccion.value === 'MOSTRADOR';
+
+            clienteSelect.disabled = esMostrador;
+            clienteSection.classList.toggle('is-disabled', esMostrador);
+
+            if (esMostrador) {
+                clienteSelect.value = '';
+            }
+        }
+
+        radiosTipoCliente.forEach((radio) => {
+            radio.addEventListener('change', actualizarEstadoCliente);
+        });
+
+        actualizarEstadoCliente();
+    })();
+</script>
+{% endblock %}

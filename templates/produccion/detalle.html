@@ -1,0 +1,145 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}DETALLE DE PRODUCCIÓN{% endblock %}
+
+{% block container %}
+
+<div class="page-header fade-up">
+    <div class="page-header-left">
+        <a href="{{ url_for('produccion.index') }}" class="btn-back">
+            <i class="ph ph-arrow-left"></i>
+        </a>
+        <div>
+            <h2 class="page-title">Detalle de producción</h2>
+            <p class="page-subtitle">
+                Producción <strong>#{{ prod.IdProduccion }}</strong> —
+                {{ prod.NombreProducto }}
+            </p>
+        </div>
+    </div>
+    <div class="page-header-right">
+        {% if prod.Estado == 'Completada' %}
+            <span class="badge badge-green"><i class="ph ph-check-circle"></i> Completada</span>
+        {% elif prod.Estado == 'Cancelada' %}
+            <span class="badge badge-red"><i class="ph ph-x-circle"></i> Cancelada</span>
+        {% elif prod.Estado == 'En proceso' %}
+            <span class="badge badge-yellow"><i class="ph ph-arrows-clockwise"></i> En proceso</span>
+        {% else %}
+            <span class="badge badge-gray">{{ prod.Estado }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid fade-up">
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Producto</p>
+        <p class="detail-card-val">{{ prod.NombreProducto }}</p>
+        {% if prod.DescripcionProducto %}
+        <p class="detail-card-sub">{{ prod.DescripcionProducto }}</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Cantidad planeada</p>
+        <p class="detail-card-val">{{ prod.CantidadPlaneada }} <small>pzas</small></p>
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Piezas fabricadas</p>
+        <p class="detail-card-val good">{{ prod.CantidadFabricada }} <small>pzas</small></p>
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Piezas defectuosas</p>
+        <p class="detail-card-val {% if prod.CantidadDefectuosa > 0 %}bad{% endif %}">
+            {{ prod.CantidadDefectuosa }} <small>pzas</small>
+        </p>
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Fecha inicio</p>
+        <p class="detail-card-val">
+            {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '—' }}
+        </p>
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Fecha fin</p>
+        <p class="detail-card-val">
+            {{ prod.FechaFin.strftime('%d/%m/%Y %H:%M') if prod.FechaFin else '—' }}
+        </p>
+    </div>
+
+    <div class="detail-card">
+        <p class="detail-card-lbl">Registrado por</p>
+        <p class="detail-card-val">{{ prod.NombreRegistro }} {{ prod.ApellidosRegistro }}</p>
+    </div>
+
+    {% if prod.IdSolicitudProduccion %}
+    <div class="detail-card">
+        <p class="detail-card-lbl">Solicitud origen</p>
+        <p class="detail-card-val">#{{ prod.IdSolicitudProduccion }}</p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% if prod.CantidadPlaneada > 0 and prod.Estado == 'Completada' %}
+{% set pct_buenas      = ((prod.CantidadFabricada  / prod.CantidadPlaneada) * 100) | round(1) %}
+{% set pct_defectuosas = ((prod.CantidadDefectuosa / prod.CantidadPlaneada) * 100) | round(1) %}
+<div class="eficiencia-wrap fade-up">
+    <div class="eficiencia-header">
+        <span class="eficiencia-lbl">Eficiencia de producción</span>
+        <span class="eficiencia-pct {% if pct_buenas >= 90 %}good{% elif pct_buenas >= 70 %}warn{% else %}bad{% endif %}">
+            {{ pct_buenas }}%
+        </span>
+    </div>
+    <div class="total-bar-track">
+        <div class="total-bar-seg total-bar-seg--green" ></div>
+        <div class="total-bar-seg total-bar-seg--red" ></div>
+    </div>
+    <div class="eficiencia-legend">
+        <span><span class="legend-dot legend-dot--green"></span> Buenas ({{ pct_buenas }}%)</span>
+        <span><span class="legend-dot legend-dot--red"></span> Defectuosas ({{ pct_defectuosas }}%)</span>
+    </div>
+</div>
+{% endif %}
+
+<div class="section-title fade-up">
+    <i class="ph ph-warning" style="color:var(--red)"></i>
+    Registro de defectos
+    <span class="section-count">{{ defectos | length }}</span>
+</div>
+
+<div class="table-wrap fade-up">
+    {% if defectos %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Cantidad</th>
+                <th>Descripción</th>
+                <th>Fecha registro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in defectos %}
+            <tr>
+                <td class="td-muted">{{ loop.index }}</td>
+                <td><span class="badge badge-red">{{ d.CantidadDefectuosa }} pzas</span></td>
+                <td>{{ d.Descripcion or '—' }}</td>
+                <td class="td-muted">{{ d.FechaRegistro.strftime('%d/%m/%Y %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="table-empty">
+        <i class="ph ph-check-circle" style="color:var(--green)"></i>
+        <p>No se registraron defectos en esta producción</p>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
