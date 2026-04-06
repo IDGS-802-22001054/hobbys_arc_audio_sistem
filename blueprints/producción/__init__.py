@@ -1,10 +1,10 @@
 from flask import Blueprint 
 
-catalogos = Blueprint(
-    'catalogos',
+producciones = Blueprint(
+    'producciones',
     __name__,
     template_folder = 'templates'
 
 )
 
-from . import routes_catalogo
+from . import routes_produccion

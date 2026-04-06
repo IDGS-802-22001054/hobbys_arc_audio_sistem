@@ -24,5 +24,5 @@ class Config:
 class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://root:5445@localhost/hobbys_car_audio"
+        "DATABASE_URL", "mysql+pymysql://root:root@localhost/Hobbys"
     )

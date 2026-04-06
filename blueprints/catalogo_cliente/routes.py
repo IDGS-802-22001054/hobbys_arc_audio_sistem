@@ -202,19 +202,10 @@ def obtener_contexto_catalogo(busqueda=""):
     }
 
 
-@catalogo_cliente_bp.route("/")
-def index():
-    return render_template(
-        "index.html",
-        active=None,
-        usuario_iniciales="RC",
-    )
-
-
 @catalogo_cliente_bp.route("/catalogo")
 def catalogo():
     busqueda = request.args.get("q", "").strip()
-    return render_template("catalogo.html", **obtener_contexto_catalogo(busqueda))
+    return render_template("catalogo/catalogo.html", **obtener_contexto_catalogo(busqueda))
 
 
 @catalogo_cliente_bp.post("/catalogo/carrito/agregar")

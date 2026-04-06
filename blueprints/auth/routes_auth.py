@@ -13,7 +13,7 @@ DESTINOS_POR_ROL = {
     'almacenista': 'dashboard.dashboard',
     'producción': 'produccion.produccion',
     'consulta': 'dashboard.dashboard',
-    'cliente': 'catalogo.catalogo',
+    'cliente': 'catalogo_cliente.catalogo',
 }
 
 

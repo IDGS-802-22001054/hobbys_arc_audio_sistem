@@ -68,7 +68,7 @@
                 {% endif %}
 
                 {% if rol in ['administrador', 'produccion'] %}
-                <a href="#" class="nav-item {% if active == 'produccion' %}active{% endif %}">
+                <a href="{{ url_for('produccion.produccion') }}" class="nav-item {% if active == 'produccion' %}active{% endif %}">
                     <i class="ph ph-factory"></i> Produccion
                 </a>
                 {% endif %}
