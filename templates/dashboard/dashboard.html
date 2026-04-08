@@ -323,6 +323,7 @@
                     </span>
                 </div>
                 <form method="POST" action="{{ url_for('dashboard.solicitar_reabastecimiento') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="id_producto" value="{{ a.IdProductoTerminado }}">
                     <input type="hidden" name="cantidad" value="{{ a.StockMinimo - a.StockActual }}">
                     <button type="submit" class="btn-reab">

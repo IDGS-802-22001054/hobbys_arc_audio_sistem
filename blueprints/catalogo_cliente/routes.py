@@ -8,13 +8,14 @@ from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Cliente, ProductoTerminado, TarjetaCliente, Usuario, db
-from services.ventas import registrar_venta_por_procedimiento
+from models import Cliente, ProductoTerminado, SolicitudProduccion, TarjetaCliente, Usuario, db
+from services.ventas import registrar_venta_catalogo_cliente
 
 from . import catalogo_cliente_bp
 
 COLORES_TARJETA = ("red", "yellow", "green", "blue")
 CLAVE_CARRITO = "catalogo_cliente_carrito"
+MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA = 3
 ENDPOINTS_CATALOGO_PROTEGIDOS = {
     "catalogo_cliente.catalogo",
     "catalogo_cliente.agregar_al_carrito",
@@ -55,6 +56,10 @@ def _texto_limpio(valor):
     return texto or None
 
 
+def _limite_carrito_por_stock(stock_disponible):
+    return max(int(stock_disponible or 0), 0) + MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA
+
+
 def _normalizar_carrito():
     bruto = session.get(CLAVE_CARRITO, {})
     carrito = {}
@@ -92,12 +97,16 @@ def _url_catalogo(busqueda=""):
 
 
 def _serializar_producto(producto, indice):
+    stock = max(int(producto.StockActual or 0), 0)
     return {
         "id": producto.IdProductoTerminado,
         "nombre": producto.Nombre,
         "descripcion": producto.Descripcion or "Sin descripcion disponible.",
         "precio": _precio_decimal(producto.PrecioVenta),
-        "stock": int(producto.StockActual or 0),
+        "stock": stock,
+        "sin_existencia": stock <= 0,
+        "limite_total": _limite_carrito_por_stock(stock),
+        "limite_solicitud": MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA,
         "imagen": _imagen_a_data_url(producto.Foto),
         "color": COLORES_TARJETA[indice % len(COLORES_TARJETA)],
     }
@@ -120,22 +129,20 @@ def _obtener_productos(busqueda=""):
     return [_serializar_producto(producto, indice) for indice, producto in enumerate(productos)]
 
 
-def _obtener_detalle_carrito():
-    carrito = _normalizar_carrito()
-    if not carrito:
-        return [], {"subtotal": Decimal("0.00"), "total": Decimal("0.00"), "cantidad_total": 0}
-
+def _obtener_productos_carrito(carrito):
     consulta = select(ProductoTerminado).where(
         ProductoTerminado.IdProductoTerminado.in_(carrito.keys())
     )
-    productos = {
+    return {
         producto.IdProductoTerminado: producto
         for producto in db.session.execute(consulta).scalars().all()
     }
 
-    lineas = []
-    subtotal = Decimal("0.00")
-    cantidad_total = 0
+
+def _separar_carrito_por_existencia(carrito):
+    productos = _obtener_productos_carrito(carrito) if carrito else {}
+    carrito_compra = {}
+    carrito_solicitud = {}
     carrito_actualizado = {}
 
     for producto_id, cantidad_solicitada in carrito.items():
@@ -144,15 +151,69 @@ def _obtener_detalle_carrito():
             continue
 
         stock_disponible = max(int(producto.StockActual or 0), 0)
-        cantidad = min(cantidad_solicitada, stock_disponible)
+        limite = _limite_carrito_por_stock(stock_disponible)
+        cantidad = min(int(cantidad_solicitada), limite)
         if cantidad <= 0:
             continue
 
         carrito_actualizado[producto_id] = cantidad
+        cantidad_compra = min(cantidad, stock_disponible)
+        cantidad_solicitud = min(
+            max(cantidad - stock_disponible, 0),
+            MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA,
+        )
+
+        if cantidad_compra > 0:
+            carrito_compra[producto_id] = cantidad_compra
+        if cantidad_solicitud > 0:
+            carrito_solicitud[producto_id] = cantidad_solicitud
+
+    return productos, carrito_compra, carrito_solicitud, carrito_actualizado
+
+
+def _obtener_detalle_carrito():
+    carrito = _normalizar_carrito()
+    if not carrito:
+        return [], {
+            "subtotal": Decimal("0.00"),
+            "total": Decimal("0.00"),
+            "subtotal_compra": Decimal("0.00"),
+            "cantidad_total": 0,
+            "cantidad_compra": 0,
+            "cantidad_solicitud": 0,
+        }
+
+    productos, carrito_compra, carrito_solicitud, carrito_actualizado = _separar_carrito_por_existencia(carrito)
+
+    lineas = []
+    subtotal = Decimal("0.00")
+    subtotal_compra = Decimal("0.00")
+    cantidad_total = 0
+    cantidad_compra = 0
+    cantidad_solicitud = 0
+
+    for producto_id, cantidad_solicitada in carrito.items():
+        producto = productos.get(producto_id)
+        if producto is None or not producto.Activo:
+            continue
+
+        stock_disponible = max(int(producto.StockActual or 0), 0)
+        cantidad = carrito_actualizado.get(producto_id, 0)
+        if cantidad <= 0:
+            continue
+
         precio = _precio_decimal(producto.PrecioVenta)
-        subtotal_linea = precio * cantidad
-        subtotal += subtotal_linea
         cantidad_total += cantidad
+
+        cantidad_compra_linea = carrito_compra.get(producto_id, 0)
+        cantidad_solicitud_linea = carrito_solicitud.get(producto_id, 0)
+        requiere_produccion = cantidad_solicitud_linea > 0
+        subtotal_linea = precio * cantidad
+        subtotal_compra_linea = precio * cantidad_compra_linea
+        subtotal += subtotal_linea
+        subtotal_compra += subtotal_compra_linea
+        cantidad_compra += cantidad_compra_linea
+        cantidad_solicitud += cantidad_solicitud_linea
 
         lineas.append(
             {
@@ -161,7 +222,12 @@ def _obtener_detalle_carrito():
                 "cantidad": cantidad,
                 "precio": precio,
                 "subtotal": subtotal_linea,
+                "subtotal_compra": subtotal_compra_linea,
                 "stock": stock_disponible,
+                "cantidad_compra": cantidad_compra_linea,
+                "cantidad_solicitud": cantidad_solicitud_linea,
+                "requiere_produccion": requiere_produccion,
+                "limite": _limite_carrito_por_stock(stock_disponible),
             }
         )
 
@@ -171,7 +237,10 @@ def _obtener_detalle_carrito():
     return lineas, {
         "subtotal": subtotal,
         "total": subtotal,
+        "subtotal_compra": subtotal_compra,
         "cantidad_total": cantidad_total,
+        "cantidad_compra": cantidad_compra,
+        "cantidad_solicitud": cantidad_solicitud,
     }
 
 
@@ -440,19 +509,33 @@ def agregar_al_carrito():
         return redirect(_url_catalogo(busqueda))
 
     stock_disponible = max(int(producto.StockActual or 0), 0)
-    if stock_disponible <= 0:
-        flash("El producto no tiene stock disponible.", "error")
-        return redirect(_url_catalogo(busqueda))
-
     carrito = _normalizar_carrito()
     cantidad_actual = carrito.get(producto_id, 0)
-    if cantidad_actual >= stock_disponible:
-        flash("Ya agregaste el maximo disponible en stock.", "error")
+    limite = _limite_carrito_por_stock(stock_disponible)
+    if cantidad_actual >= limite:
+        if cantidad_actual >= stock_disponible:
+            flash(
+                f"Solo puedes solicitar hasta {MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA} unidades adicionales cuando no hay existencia suficiente.",
+                "error",
+            )
+        else:
+            flash("Ya agregaste el maximo disponible en stock.", "error")
         return redirect(_url_catalogo(busqueda))
 
     carrito[producto_id] = cantidad_actual + 1
     _guardar_carrito(carrito)
-    flash(f"{producto.Nombre} se agrego al carrito.", "success")
+    if stock_disponible <= 0:
+        flash(
+            f"{producto.Nombre} se agrego como solicitud de produccion. Maximo {MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA} unidades.",
+            "success",
+        )
+    elif cantidad_actual + 1 > stock_disponible:
+        flash(
+            f"{producto.Nombre} excede el stock disponible. Las unidades faltantes se agregaran como solicitud de produccion.",
+            "success",
+        )
+    else:
+        flash(f"{producto.Nombre} se agrego al carrito.", "success")
     return redirect(_url_catalogo(busqueda))
 
 
@@ -488,8 +571,15 @@ def actualizar_carrito():
 
     if accion == "sumar":
         stock_disponible = max(int(producto.StockActual or 0), 0)
-        if carrito[producto_id] >= stock_disponible:
-            flash("No puedes superar el stock disponible.", "error")
+        limite = _limite_carrito_por_stock(stock_disponible)
+        if carrito[producto_id] >= limite:
+            if carrito[producto_id] >= stock_disponible:
+                flash(
+                    f"Solo puedes solicitar hasta {MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA} unidades adicionales cuando no hay existencia suficiente.",
+                    "error",
+                )
+            else:
+                flash("No puedes superar el stock disponible.", "error")
         else:
             carrito[producto_id] += 1
             _guardar_carrito(carrito)
@@ -515,28 +605,42 @@ def realizar_compra():
         return redirect(_url_catalogo(busqueda))
 
     try:
-        usuario = _obtener_usuario_registro()
-        if usuario is None:
-            flash("No hay un usuario disponible para registrar la venta.", "error")
-            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
-
         cliente = _obtener_cliente_autenticado()
         if cliente is None:
             flash("No se encontro un cliente asociado a tu usuario.", "error")
             return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
+
+        productos, carrito_compra, carrito_solicitud, carrito_actualizado = _separar_carrito_por_existencia(carrito)
+        if carrito_actualizado != carrito:
+            _guardar_carrito(carrito_actualizado)
+            carrito = carrito_actualizado
+
+        if not carrito_compra and not carrito_solicitud:
+            flash("Tu carrito ya no tiene productos disponibles para procesar.", "error")
+            return redirect(_url_catalogo(busqueda))
 
         if not request.form.get("acepto_terminos"):
             raise ValueError("Debes aceptar los terminos y condiciones para continuar.")
 
         direccion_envio = _validar_direccion_envio(request.form)
         tarjeta_checkout = _resolver_tarjeta_checkout(cliente, request.form)
+        venta_registrada = False
+        solicitudes_creadas = 0
 
-        registrar_venta_por_procedimiento(
-            id_cliente=cliente.IdCliente,
-            id_usuario=usuario.IdUsuario,
-            metodo_pago="TARJETA",
-            carrito=carrito,
-        )
+        usuario = _obtener_usuario_registro()
+        if usuario is None:
+            flash("No hay un usuario disponible para registrar la venta.", "error")
+            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
+
+        if carrito_compra or carrito_solicitud:
+            registrar_venta_catalogo_cliente(
+                id_cliente=cliente.IdCliente,
+                id_usuario=usuario.IdUsuario,
+                metodo_pago="TARJETA",
+                carrito_total=carrito,
+                carrito_con_stock=carrito_compra,
+            )
+            venta_registrada = True
 
         try:
             persona = cliente.persona
@@ -546,7 +650,7 @@ def realizar_compra():
             persona.NumeroInterior = direccion_envio["numero_interior"]
             persona.CodigoPostal = direccion_envio["codigo_postal"]
 
-            if tarjeta_checkout["guardar_tarjeta"] and tarjeta_checkout["nueva_tarjeta"]:
+            if tarjeta_checkout and tarjeta_checkout["guardar_tarjeta"] and tarjeta_checkout["nueva_tarjeta"]:
                 tarjetas = _obtener_tarjetas_cliente(cliente)
                 if tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas:
                     for tarjeta in tarjetas:
@@ -567,19 +671,49 @@ def realizar_compra():
                     )
                 )
 
+            for producto_id, cantidad in carrito_solicitud.items():
+                producto = productos.get(producto_id)
+                if producto is None:
+                    continue
+
+                db.session.add(
+                    SolicitudProduccion(
+                        IdProductoTerminado=producto_id,
+                        CantidadSolicitada=min(int(cantidad), MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA),
+                        Motivo=(
+                            f"Solicitud automatica desde catalogo cliente por falta de existencia: "
+                            f"{producto.Nombre}"
+                        ),
+                        IdUsuarioSolicita=current_user.IdUsuario,
+                    )
+                )
+                solicitudes_creadas += 1
+
             db.session.commit()
         except SQLAlchemyError:
             db.session.rollback()
-            current_app.logger.exception(
-                "La compra se registro, pero no fue posible actualizar la direccion o guardar la tarjeta."
-            )
-            flash(
-                "Compra registrada correctamente, pero no fue posible actualizar la direccion o guardar la tarjeta.",
-                "warning",
-            )
+            if venta_registrada:
+                solicitudes_creadas = 0
+                current_app.logger.exception(
+                    "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear solicitudes."
+                )
+                flash(
+                    "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear las solicitudes de produccion pendientes.",
+                    "warning",
+                )
+            else:
+                raise
 
         _guardar_carrito({})
-        flash("Compra registrada correctamente.", "success")
+        mensajes = []
+        if venta_registrada:
+            mensajes.append("Compra registrada correctamente.")
+        if solicitudes_creadas:
+            mensajes.append(
+                f"Se generaron {solicitudes_creadas} solicitud(es) de produccion para piezas sin existencia."
+            )
+        if mensajes:
+            flash(" ".join(mensajes), "success")
         return redirect(_url_catalogo(busqueda))
     except ValueError as error:
         flash(str(error), "error")

@@ -119,11 +119,41 @@
 
                         <div class="notif-dropdown">
                             <div class="notif-header">
-                                <h4>Alertas de Stock Bajo</h4>
+                                <h4>Alertas</h4>
                             </div>
 
                             <div class="notif-body">
-                                {% if total_alertas > 0 %}
+                                {% if solicitudes_pendientes %}
+                                {% for solicitud in solicitudes_pendientes %}
+                                <div class="notif-item" style="display: block;">
+                                    <div class="notif-item-title">
+                                        <strong>Produccion</strong>
+                                        <span class="status-tag">PENDIENTE</span>
+                                    </div>
+                                    <p style="font-size: 11px; color: var(--text); line-height: 1.4; margin-bottom: 8px;">
+                                        Solicitud #{{ solicitud.IdSolicitudProduccion }} de {{ solicitud.NombreProducto }}
+                                        por {{ solicitud.CantidadSolicitada }} pzas.
+                                        {{ solicitud.NombreSolicita }} {{ solicitud.ApellidosSolicita }}
+                                    </p>
+                                    <div style="display: flex; gap: 8px;">
+                                        <form method="POST" action="{{ url_for('produccion.aprobar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-green" style="padding: 6px 10px; font-size: 11px;">
+                                                Aceptar
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('produccion.rechazar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-red" style="padding: 6px 10px; font-size: 11px;">
+                                                Rechazar
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                {% endif %}
+
+                                {% if alertas_criticas %}
                                 {% for a in alertas_criticas %}
                                 <a href="{{ url_for('materia_prima.leer_alerta', id_alerta=a.IdAlertaSistema) }}" class="notif-item"
                                     style="text-decoration: none; display: block;">
@@ -134,7 +164,9 @@
                                     <p style="font-size: 11px; color: var(--text); line-height: 1.4;">{{ a.Mensaje }}</p>
                                 </a>
                                 {% endfor %}
-                                {% else %}
+                                {% endif %}
+
+                                {% if not solicitudes_pendientes and not alertas_criticas %}
                                 <div class="notif-empty">
                                     <i class="ph ph-check-circle"></i>
                                     <p>Sin alertas pendientes</p>
@@ -142,9 +174,15 @@
                                 {% endif %}
                             </div>
 
+                            {% if puede_aprobar_solicitudes %}
+                            <a href="{{ url_for('produccion.produccion') }}" class="notif-footer">
+                                Gestionar Produccion
+                            </a>
+                            {% else %}
                             <a href="{{ url_for('materia_prima.listar') }}" class="notif-footer">
                                 Gestionar Inventario
                             </a>
+                            {% endif %}
                         </div>
                     </div>
                     <a href="{{ url_for('empleados.editar_perfil') }}" class="topbar-avatar"

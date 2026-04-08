@@ -1,18 +1,18 @@
 {% extends "layout_emp.html" %}
 
-{% block page_title %}FINALIZAR PRODUCCIÓN{% endblock %}
+{% block page_title %}FINALIZAR PRODUCCION{% endblock %}
 
 {% block container %}
 
 <div class="page-header fade-up">
     <div class="page-header-left">
-        <a href="{{ url_for('produccion.index') }}" class="btn-back">
+        <a href="{{ url_for('produccion.produccion') }}" class="btn-back">
             <i class="ph ph-arrow-left"></i>
         </a>
         <div>
-            <h2 class="page-title">Finalizar producción</h2>
+            <h2 class="page-title">Finalizar produccion</h2>
             <p class="page-subtitle">
-                Producción <strong>#{{ prod.IdProduccion }}</strong> —
+                Produccion <strong>#{{ prod.IdProduccion }}</strong> -
                 {{ prod.NombreProducto }}
             </p>
         </div>
@@ -33,7 +33,7 @@
         <div class="form-info-item">
             <span class="form-info-lbl">Inicio</span>
             <span class="form-info-val">
-                {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '—' }}
+                {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '-' }}
             </span>
         </div>
         <div class="form-info-item">
@@ -47,40 +47,42 @@
     <div class="alert alert-info">
         <i class="ph ph-info"></i>
         <p>
-            Solo las <strong>piezas buenas</strong> se agregarán al inventario.
-            Las defectuosas quedan registradas para análisis de calidad.
-            La suma de ambas no debe superar <strong>{{ prod.CantidadPlaneada }} pzas</strong>.
+            Solo las <strong>piezas producidas</strong> se agregaran al inventario.
+            Las defectuosas ya registradas se cargan automaticamente.
+            La cantidad producida no debe superar <strong>{{ prod.CantidadPlaneada }} pzas</strong>.
         </p>
     </div>
 
     <form method="POST"
           action="{{ url_for('produccion.finalizar', id=prod.IdProduccion) }}"
           id="form-finalizar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="form-row-2">
 
             <div class="form-group">
                 <label class="form-label" for="cantidad_buenas">
                     <i class="ph ph-check-circle" style="color:var(--green)"></i>
-                    Piezas buenas <span class="required">*</span>
+                    Piezas producidas <span class="required">*</span>
                 </label>
                 <input
                     type="number"
                     id="cantidad_buenas"
                     name="cantidad_buenas"
                     class="form-input"
-                    min="0"
+                    min="1"
                     max="{{ prod.CantidadPlaneada }}"
-                    placeholder="0"
+                    value="{{ cantidad_buenas_sugerida }}"
+                    placeholder="{{ cantidad_buenas_sugerida }}"
                     required
                 >
-                <span class="form-hint">Se agregarán al inventario de stock</span>
+                <span class="form-hint">Indica cuantas piezas buenas se agregaran al inventario</span>
             </div>
 
             <div class="form-group">
                 <label class="form-label" for="cantidad_defectuosas">
                     <i class="ph ph-warning" style="color:var(--red)"></i>
-                    Piezas defectuosas
+                    Piezas defectuosas registradas
                 </label>
                 <input
                     type="number"
@@ -89,19 +91,20 @@
                     class="form-input"
                     min="0"
                     max="{{ prod.CantidadPlaneada }}"
-                    value="0"
+                    value="{{ cantidad_defectuosas_registradas }}"
+                    readonly
                 >
-                <span class="form-hint">Solo para registro y análisis</span>
+                <span class="form-hint">Se cargan automaticamente con el total real registrado en esta produccion</span>
             </div>
 
         </div>
 
         <div class="form-actions">
-            <a href="{{ url_for('produccion.index') }}" class="btn btn-outline">
+            <a href="{{ url_for('produccion.produccion') }}" class="btn btn-outline">
                 <i class="ph ph-x"></i> Cancelar
             </a>
             <button type="submit" class="btn btn-green">
-                <i class="ph ph-check-circle"></i> Finalizar producción
+                <i class="ph ph-check-circle"></i> Finalizar produccion
             </button>
         </div>
 

@@ -1,11 +1,11 @@
 from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from config import DevelopmentConfig
-from models import db, Usuario
+from models import db, Usuario, SolicitudProduccion
 from sqlalchemy import text
-
+from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.compras import compras_bp
 from blueprints.ventas.routes import ventas_bp
@@ -14,10 +14,10 @@ from blueprints.proveedores import proveedores_bp
 from blueprints.costos_utilidades import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
-from dashboard.routes_dashboard import dashboard_bp
-from clientes.routes_cliente import clientes_bp
-from auth.routes_auth import auth_bp
-from empleados.routes_empleado import empleados_bp
+from blueprints.dashboard.routes_dashboard import dashboard_bp
+from blueprints.clientes.routes_cliente import clientes_bp
+from blueprints.auth.routes_auth import auth_bp
+from blueprints.empleados.routes_empleado import empleados_bp
 from config import DevelopmentConfig
 from models import db, Usuario
 from models import db, CorteVentaDiario
@@ -82,8 +82,15 @@ def registrar_manejadores_error(aplicacion):
 def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
-        es_autorizado = session.get('rol') in ['Administrador', 'Almacenista']
         alertas = []
+        solicitudes_pendientes = []
+        rol_actual = (
+            getattr(getattr(current_user, 'rol', None), 'Nombre', '')
+            if getattr(current_user, 'is_authenticated', False)
+            else ''
+        )
+        es_admin = rol_actual == 'Administrador'
+        es_autorizado = rol_actual in ['Administrador', 'Almacenista']
 
         if es_autorizado:
             query = text("""
@@ -94,10 +101,33 @@ def registrar_context_processors(aplicacion):
             """)
             alertas = db.session.execute(query).fetchall()
 
+        if es_admin:
+            query_solicitudes = text("""
+                SELECT
+                    sp.IdSolicitudProduccion,
+                    sp.CantidadSolicitada,
+                    sp.FechaSolicitud,
+                    pt.Nombre AS NombreProducto,
+                    per.Nombre AS NombreSolicita,
+                    per.Apellidos AS ApellidosSolicita
+                FROM SolicitudProduccion sp
+                INNER JOIN ProductoTerminado pt
+                    ON pt.IdProductoTerminado = sp.IdProductoTerminado
+                INNER JOIN Usuario u
+                    ON u.IdUsuario = sp.IdUsuarioSolicita
+                INNER JOIN Persona per
+                    ON per.IdPersona = u.IdPersona
+                WHERE sp.Estado = 'PENDIENTE'
+                ORDER BY sp.FechaSolicitud DESC
+            """)
+            solicitudes_pendientes = db.session.execute(query_solicitudes).fetchall()
+
         return dict(
             alertas_criticas=alertas,
-            total_alertas=len(alertas),
+            solicitudes_pendientes=solicitudes_pendientes,
+            total_alertas=len(alertas) + len(solicitudes_pendientes),
             puede_ver_alertas=es_autorizado,
+            puede_aprobar_solicitudes=es_admin,
         )
 
 

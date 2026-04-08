@@ -12,7 +12,7 @@
         <div>
             <p class="section-eyebrow">Tienda</p>
             <h1 class="section-title">Catalogo de productos</h1>
-            <p class="section-copy">Explora los productos disponibles en la base de datos y agregalos al carrito.</p>
+            <p class="section-copy">Explora los productos disponibles en la base de datos y agregalos al carrito. Si una pieza no tiene existencia, puedes solicitar su produccion hasta por 3 unidades.</p>
         </div>
 
         <form class="catalog-search" method="get" action="{{ url_for('catalogo_cliente.catalogo') }}">
@@ -42,7 +42,11 @@
                     </div>
 
                     <div class="product-meta">
-                        <span>Stock: {{ producto.stock }}</span>
+                        {% if producto.sin_existencia %}
+                        <span>Sin existencia · solicitud max {{ producto.limite_solicitud }}</span>
+                        {% else %}
+                        <span>Stock: {{ producto.stock }} · faltantes hasta {{ producto.limite_solicitud }} u.</span>
+                        {% endif %}
                     </div>
 
                     <div class="product-footer">
@@ -52,7 +56,7 @@
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="producto_id" value="{{ producto.id }}">
                             <input type="hidden" name="q" value="{{ busqueda or '' }}">
-                            <button type="submit" class="add-cart-btn" aria-label="Anadir {{ producto.nombre }} al carrito" {% if producto.stock <= 0 %}disabled{% endif %}>
+                            <button type="submit" class="add-cart-btn" aria-label="Anadir {{ producto.nombre }} al carrito">
                                 <i class="ph ph-plus-circle"></i>
                             </button>
                         </form>
@@ -83,8 +87,19 @@
                     </div>
 
                     <div class="cart-item-detail">
+                        {% if item.requiere_produccion %}
+                        <span>
+                            {% if item.cantidad_compra %}
+                            {{ item.cantidad_compra }} u. inmediatas + {{ item.cantidad_solicitud }} u. a produccion
+                            {% else %}
+                            {{ item.cantidad_solicitud }} u. solicitadas a produccion
+                            {% endif %}
+                        </span>
+                        <span>Stock actual: {{ item.stock }} · limite total {{ item.limite }}</span>
+                        {% else %}
                         <span>{{ item.cantidad }} u. x ${{ "%.2f"|format(item.precio) }}</span>
                         <span>Stock: {{ item.stock }}</span>
+                        {% endif %}
                     </div>
 
                     <div class="cart-item-actions">
@@ -105,7 +120,7 @@
                             <input type="hidden" name="producto_id" value="{{ item.id }}">
                             <input type="hidden" name="q" value="{{ busqueda or '' }}">
                             <input type="hidden" name="accion" value="sumar">
-                            <button type="submit" class="cart-qty-btn" aria-label="Sumar unidad" {% if item.cantidad >= item.stock %}disabled{% endif %}>
+                            <button type="submit" class="cart-qty-btn" aria-label="Sumar unidad" {% if item.cantidad >= item.limite %}disabled{% endif %}>
                                 <i class="ph ph-plus"></i>
                             </button>
                         </form>
@@ -132,8 +147,12 @@
                     <strong>{{ resumen.cantidad_total }}</strong>
                 </div>
                 <div>
-                    <span>Subtotal</span>
-                    <strong>${{ "%.2f"|format(resumen.subtotal) }}</strong>
+                    <span>Compra inmediata</span>
+                    <strong>${{ "%.2f"|format(resumen.subtotal_compra) }}</strong>
+                </div>
+                <div>
+                    <span>Solicitudes</span>
+                    <strong>{{ resumen.cantidad_solicitud }}</strong>
                 </div>
                 <div>
                     <span>Total</span>

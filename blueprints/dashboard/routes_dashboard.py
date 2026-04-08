@@ -1,16 +1,19 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
-from flask_login import login_required, current_user
 from datetime import datetime
+
+from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 from sqlalchemy import text
-from models import db
+
+from models import SolicitudProduccion, db
+from services.produccion import asegurar_produccion_aprobada
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
 PERIODOS_VALIDOS = {'semana', 'mes', 'anio'}
 
 DIAS_ES = {
-    'Mon': 'Lun', 'Tue': 'Mar', 'Wed': 'Mié',
-    'Thu': 'Jue', 'Fri': 'Vie', 'Sat': 'Sáb', 'Sun': 'Dom'
+    'Mon': 'Lun', 'Tue': 'Mar', 'Wed': 'Mie',
+    'Thu': 'Jue', 'Fri': 'Vie', 'Sat': 'Sab', 'Sun': 'Dom'
 }
 
 MESES_ES = {
@@ -25,20 +28,24 @@ def _formatear_etiqueta(row, periodo):
         fmt = row.Etiqueta.strftime('%a %d')
         dia, num = fmt.split(' ')
         return f"{DIAS_ES.get(dia, dia)} {num}"
-    elif periodo == 'mes':
+    if periodo == 'mes':
         fmt = row.FechaInicioSemana.strftime('%d %b')
         num, mes = fmt.split(' ')
         return f"{num} {MESES_ES.get(mes, mes)}"
-    else:
-        fmt = datetime.strptime(row.Mes, '%Y-%m').strftime('%b %y')
-        mes, anio = fmt.split(' ')
-        return f"{MESES_ES.get(mes, mes)} {anio}"
+
+    fmt = datetime.strptime(row.Mes, '%Y-%m').strftime('%b %y')
+    mes, anio = fmt.split(' ')
+    return f"{MESES_ES.get(mes, mes)} {anio}"
+
+
+def _usuario_es_administrador():
+    rol = (getattr(getattr(current_user, 'rol', None), 'Nombre', '') or '').lower().strip()
+    return rol == 'administrador'
 
 
 @dashboard_bp.route('/dashboard')
 @login_required
 def dashboard():
-
     periodo = request.args.get('periodo', 'semana')
     if periodo not in PERIODOS_VALIDOS:
         periodo = 'semana'
@@ -114,19 +121,44 @@ def solicitar_reabastecimiento():
     cantidad = request.form.get('cantidad', type=int, default=1)
 
     if not id_producto or cantidad <= 0:
-        flash('Datos inválidos para la solicitud.', 'warning')
+        flash('Datos invalidos para la solicitud.', 'warning')
         return redirect(url_for('dashboard.dashboard'))
+
+    es_admin = _usuario_es_administrador()
 
     db.session.execute(
         text('CALL SP_SolicitudProduccion_Crear(:id_producto, :cantidad, :motivo, :id_usuario)'),
         {
             'id_producto': id_producto,
             'cantidad': cantidad,
-            'motivo': 'Reabastecimiento automático desde dashboard (stock bajo)',
+            'motivo': 'Reabastecimiento automatico desde dashboard (stock bajo)',
             'id_usuario': current_user.IdUsuario,
         }
     )
+
+    if es_admin:
+        solicitud = (
+            SolicitudProduccion.query
+            .filter_by(
+                IdProductoTerminado=id_producto,
+                IdUsuarioSolicita=current_user.IdUsuario,
+            )
+            .order_by(SolicitudProduccion.IdSolicitudProduccion.desc())
+            .first()
+        )
+
+        if solicitud:
+            solicitud.Estado = 'Aprobada'
+            solicitud.IdUsuarioAprueba = current_user.IdUsuario
+            solicitud.FechaAprobacion = datetime.now()
+            solicitud.ObservacionesAprobacion = 'Aprobacion automatica por administrador desde dashboard'
+
+            asegurar_produccion_aprobada(solicitud, current_user.IdUsuario)
+
     db.session.commit()
 
-    flash('Solicitud de reabastecimiento generada correctamente.', 'success')
+    if es_admin:
+        flash('Solicitud de reabastecimiento generada y aprobada automaticamente.', 'success')
+    else:
+        flash('Solicitud de reabastecimiento generada correctamente.', 'success')
     return redirect(url_for('dashboard.dashboard'))
