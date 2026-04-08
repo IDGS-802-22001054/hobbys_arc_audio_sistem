@@ -12,7 +12,7 @@
         <div>
             <p class="section-eyebrow">Compra</p>
             <h1 class="section-title">Revision final de tu pedido</h1>
-            <p class="section-copy">Confirma los productos, el metodo de pago, la direccion de envio y acepta los terminos antes de registrar la compra.</p>
+            <p class="section-copy">Confirma los productos, el metodo de pago, la direccion de envio y acepta los terminos antes de registrar la compra. Las piezas sin existencia se enviaran como solicitud de produccion.</p>
         </div>
         <a href="{{ url_for('catalogo_cliente.catalogo', q=busqueda or '') }}" class="btn btn-outline">
             <i class="ph ph-arrow-left"></i> Volver al catalogo
@@ -38,7 +38,17 @@
                     <article class="checkout-item">
                         <div>
                             <h3>{{ item.nombre }}</h3>
+                            {% if item.requiere_produccion %}
+                            <p>
+                                {% if item.cantidad_compra %}
+                                {{ item.cantidad_compra }} u. con entrega normal + {{ item.cantidad_solicitud }} u. como solicitud de produccion
+                                {% else %}
+                                {{ item.cantidad_solicitud }} u. sin existencia · se enviaran como solicitud de produccion
+                                {% endif %}
+                            </p>
+                        {% else %}
                             <p>{{ item.cantidad }} u. x ${{ "%.2f"|format(item.precio) }}</p>
+                            {% endif %}
                         </div>
                         <strong>${{ "%.2f"|format(item.subtotal) }}</strong>
                     </article>
@@ -64,7 +74,6 @@
                         </option>
                         {% endfor %}
                     </select>
-                    <small class="form-hint">Si eliges una tarjeta guardada, el formulario de abajo se ignora.</small>
                 </div>
 
                 <div class="saved-cards">
@@ -205,8 +214,8 @@
 
                 <div class="terms-box">
                     <p>Declaro que los datos de envio y pago proporcionados para esta compra son correctos.</p>
-                    <p>Acepto que el sistema registre la venta con base en la disponibilidad real de stock al momento de confirmar.</p>
-                    <p>Entiendo que los productos del carrito pueden ajustarse si cambian existencias antes de cerrar la compra.</p>
+                    <p>Entiendo que, si no hay existencias suficientes, el envio de mi pedido puede tardar hasta 15 dias.</p>
+                    <p>Entiendo que tendre un plazo maximo de 3 dias para comunicarme y cancelar un pedido. Despues de ese plazo, el reembolso se realizara descontando una cuota de cancelacion que dependera del producto solicitado.</p>
                 </div>
 
                 <label class="check-row terms-check">
@@ -235,7 +244,19 @@
                         <strong>{{ resumen.cantidad_total }}</strong>
                     </div>
                     <div>
+                        <span>Compra inmediata</span>
+                        <strong>{{ resumen.cantidad_compra }}</strong>
+                    </div>
+                    <div>
+                        <span>Solicitudes</span>
+                        <strong>{{ resumen.cantidad_solicitud }}</strong>
+                    </div>
+                    <div>
                         <span>Subtotal</span>
+                        <strong>${{ "%.2f"|format(resumen.subtotal_compra) }}</strong>
+                    </div>
+                    <div>
+                        <span>Total a cobrar</span>
                         <strong>${{ "%.2f"|format(resumen.subtotal) }}</strong>
                     </div>
                     <div class="summary-total">

@@ -78,14 +78,15 @@
             <tbody>
                 {% set total_compra = namespace(valor=0) %}
                 {% for item in carrito %}
-                    {% set subtotal = item.Cantidad * item.CostoUnitario %}
+                    {% set cantidad_real = (item.Cantidad / 1000) if item.UnidadMedida in ['Kg', 'L'] else item.Cantidad %}
+                    {% set subtotal = cantidad_real * item.CostoUnitario %}
                     {% set total_compra.valor = total_compra.valor + subtotal %}
                     <tr>
                         <td style="color: var(--text);">{{ item.NombreMateria }}</td>
                         <td>
-                            {{ "{:,.2f}".format(item.Cantidad) }} 
+                            {{ "{:,.2f}".format(cantidad_real) }} 
                             <small style="color: var(--muted2);">
-                                ({% if item.UnidadMedida == 'Kg' %}g{% else %}ml{% endif %})
+                                ({{ item.UnidadMedida }})
                             </small>
                         </td>
                         <td>$ {{ "{:,.2f}".format(item.CostoUnitario) }}</td>

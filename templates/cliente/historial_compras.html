@@ -1,0 +1,105 @@
+{% extends "layout_cli.html" %}
+{% block page_title %}Historial de Compras{% endblock %}
+{% block container %}
+
+<div class="page-header fade-up">
+    <div>
+        <h2 class="page-header-title">HISTORIAL DE COMPRAS</h2>
+        <p class="page-subtitle">Consulta tus pedidos registrados, montos y productos comprados.</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-blue">
+            <i class="ph ph-storefront"></i> Seguir comprando
+        </a>
+    </div>
+</div>
+
+<div class="fade-up" style="animation-delay:0.05s; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:18px;">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px;">
+        <div class="detail-section-title"><i class="ph ph-shopping-bag"></i> Compras</div>
+        <div style="font-size:28px; font-weight:800; color:var(--text);">{{ total_compras }}</div>
+        <div style="color:var(--muted2); font-size:13px;">Pedidos registrados</div>
+    </div>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px;">
+        <div class="detail-section-title"><i class="ph ph-currency-dollar"></i> Total gastado</div>
+        <div style="font-size:28px; font-weight:800; color:var(--green);">${{ "%.2f"|format(total_gastado) }}</div>
+        <div style="color:var(--muted2); font-size:13px;">Acumulado historico</div>
+    </div>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px;">
+        <div class="detail-section-title"><i class="ph ph-package"></i> Productos</div>
+        <div style="font-size:28px; font-weight:800; color:var(--blue);">{{ total_productos }}</div>
+        <div style="color:var(--muted2); font-size:13px;">Piezas compradas</div>
+    </div>
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px;">
+        <div class="detail-section-title"><i class="ph ph-calendar-blank"></i> Ultima compra</div>
+        <div style="font-size:20px; font-weight:800; color:var(--text);">
+            {{ ultima_compra.strftime('%d/%m/%Y') if ultima_compra else 'Sin compras' }}
+        </div>
+        <div style="color:var(--muted2); font-size:13px;">
+            {{ ultima_compra.strftime('%H:%M') if ultima_compra else 'Aun no registras pedidos' }}
+        </div>
+    </div>
+</div>
+
+<div class="fade-up" style="animation-delay:0.1s; display:grid; gap:16px;">
+    {% for venta in ventas %}
+    <details style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;">
+        <summary style="list-style:none; cursor:pointer; padding:18px 22px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; align-items:center;">
+            <div>
+                <div style="font-size:12px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em;">Compra</div>
+                <div style="font-size:20px; font-weight:800; color:var(--text);">#{{ venta.IdVenta }}</div>
+            </div>
+            <div>
+                <div style="font-size:12px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em;">Fecha</div>
+                <div style="font-weight:700; color:var(--text);">{{ venta.FechaVenta.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+            <div>
+                <div style="font-size:12px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em;">Metodo de pago</div>
+                <div style="font-weight:700; color:var(--text);">{{ venta.MetodoPago }}</div>
+            </div>
+            <div>
+                <div style="font-size:12px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em;">Total</div>
+                <div style="font-size:20px; font-weight:800; color:var(--green);">${{ "%.2f"|format(venta.TotalVenta) }}</div>
+            </div>
+        </summary>
+
+        <div style="padding:0 22px 22px;">
+            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:16px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead style="background:var(--card2);">
+                        <tr>
+                            <th style="text-align:left; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Producto</th>
+                            <th style="text-align:center; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Cantidad</th>
+                            <th style="text-align:right; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Precio unitario</th>
+                            <th style="text-align:right; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detalle in venta.detalles %}
+                        <tr style="border-top:1px solid var(--border);">
+                            <td style="padding:14px 16px; color:var(--text); font-weight:600;">
+                                {{ detalle.producto_terminado.Nombre if detalle.producto_terminado else 'Producto eliminado' }}
+                            </td>
+                            <td style="padding:14px 16px; color:var(--text); text-align:center;">{{ detalle.Cantidad }}</td>
+                            <td style="padding:14px 16px; color:var(--text); text-align:right;">${{ "%.2f"|format(detalle.PrecioUnitario) }}</td>
+                            <td style="padding:14px 16px; color:var(--green); text-align:right; font-weight:700;">${{ "%.2f"|format(detalle.Subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </details>
+    {% else %}
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:34px 28px; text-align:center;">
+        <i class="ph ph-shopping-bag-open" style="font-size:42px; color:var(--muted2);"></i>
+        <h3 style="margin:12px 0 8px; color:var(--text);">Aun no tienes compras registradas</h3>
+        <p style="margin:0 0 18px; color:var(--muted2);">Cuando completes una compra desde el catalogo, aparecera aqui con su detalle.</p>
+        <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-blue">
+            <i class="ph ph-storefront"></i> Ir al catalogo
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
