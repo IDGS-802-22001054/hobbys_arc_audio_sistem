@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from decimal import Decimal
 from sqlalchemy import UniqueConstraint, text as sql_text
-from sqlalchemy.dialects.mysql import LONGBLOB, MEDIUMBLOB
+from sqlalchemy.dialects.mysql import LONGTEXT, MEDIUMBLOB
 from flask_login import UserMixin
 
 db = SQLAlchemy()
@@ -56,7 +56,7 @@ class Persona(BaseModel):
     NumeroExterior = db.Column(db.String(20))
     NumeroInterior = db.Column(db.String(20))
     CodigoPostal = db.Column(db.String(10))
-    Foto = db.Column(LONGBLOB)
+    Foto = db.Column(LONGTEXT)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
@@ -229,6 +229,9 @@ class Usuario(UserMixin, BaseModel):
         foreign_keys=lambda: [AlertaSistema.IdUsuarioDestino], lazy=True
     )
     sesiones = db.relationship("SesionUsuario", back_populates="usuario", lazy=True)
+
+    def get_id(self):
+        return str(self.IdUsuario)
 
 
 class ConfiguracionSistema(BaseModel):

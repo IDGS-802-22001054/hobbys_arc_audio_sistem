@@ -1,9 +1,373 @@
 {% extends "layout_emp.html" %}
+{% block page_title %}DASHBOARD{% endblock %}
+
 {% block container %}
 
+<div class="dash-kpi-row fade-up">
 
+    <div class="kpi-card kpi-card--blue">
+        <div class="kpi-icon"><i class="ph ph-currency-dollar"></i></div>
+        <div class="kpi-body">
+            <span class="kpi-label">Venta total hoy</span>
+            <span class="kpi-value">${{ "%.2f"|format(venta_total) }}</span>
+        </div>
+        <div class="kpi-glow kpi-glow--blue"></div>
+    </div>
 
+    <div class="kpi-card kpi-card--green">
+        <div class="kpi-icon"><i class="ph ph-chart-line-up"></i></div>
+        <div class="kpi-body">
+            <span class="kpi-label">Utilidad total hoy</span>
+            <span class="kpi-value">${{ "%.2f"|format(utilidad_total) }}</span>
+        </div>
+        <div class="kpi-glow kpi-glow--green"></div>
+    </div>
 
+    <div class="kpi-card kpi-card--yellow">
+        <div class="kpi-icon"><i class="ph ph-warning"></i></div>
+        <div class="kpi-body">
+            <span class="kpi-label">Alertas stock bajo</span>
+            <span class="kpi-value">{{ alertas_stock | length }}</span>
+        </div>
+        <div class="kpi-glow kpi-glow--yellow"></div>
+    </div>
 
+    <div class="kpi-card kpi-card--red">
+        <div class="kpi-icon"><i class="ph ph-warning-circle"></i></div>
+        <div class="kpi-body">
+            <span class="kpi-label">Alertas materia prima</span>
+            <span class="kpi-value">{{ alertas_mp | length }}</span>
+        </div>
+        <div class="kpi-glow kpi-glow--red"></div>
+    </div>
+
+</div>
+
+<div class="dash-main-row fade-up">
+
+    <div class="dash-chart-card">
+        <div class="dash-chart-header">
+            <span class="dash-chart-title">Ventas totales</span>
+            <div class="dash-chart-filters">
+                <a href="{{ url_for('dashboard.dashboard', periodo='semana') }}"
+                    class="chart-filter-btn {% if periodo == 'semana' %}active{% endif %}">
+                    Semana
+                </a>
+                <a href="{{ url_for('dashboard.dashboard', periodo='mes') }}"
+                    class="chart-filter-btn {% if periodo == 'mes' %}active{% endif %}">
+                    Mes
+                </a>
+                <a href="{{ url_for('dashboard.dashboard', periodo='anio') }}"
+                    class="chart-filter-btn {% if periodo == 'anio' %}active{% endif %}">
+                    Año
+                </a>
+            </div>
+        </div>
+
+        <div class="barchart-wrap">
+            {% if datos_grafica %}
+            {% set max_val = namespace(v=0) %}
+            {% for row in datos_grafica %}
+            {% if row.ventas > max_val.v %}{% set max_val.v = row.ventas %}{% endif %}
+            {% if row.utilidad > max_val.v %}{% set max_val.v = row.utilidad %}{% endif %}
+            {% endfor %}
+
+            {% for row in datos_grafica %}
+            {% set pct_ventas = ((row.ventas / max_val.v) * 100) | round(1) if max_val.v > 0 else 0 %}
+            {% set pct_utilidad = ((row.utilidad / max_val.v) * 100) | round(1) if max_val.v > 0 else 0 %}
+            {% set h_ventas = (pct_ventas | string) + "%" %}
+            {% set h_utilidad = (pct_utilidad | string) + "%" %}
+            <div class="bar-group">
+                <div class="bar-cols">
+                    <div class="bar-col">
+                        <div class="bar bar--blue" style="height: {{ h_ventas }}">
+                            <span class="bar-tooltip">${{ "%.0f"|format(row.ventas) }}</span>
+                        </div>
+                    </div>
+                    <div class="bar-col">
+                        <div class="bar bar--green" style="height: {{ h_utilidad }}">
+                            <span class="bar-tooltip">${{ "%.0f"|format(row.utilidad) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <span class="bar-label">{{ row.etiqueta }}</span>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="barchart-empty">
+                <i class="ph ph-chart-bar"></i>
+                <p>Sin datos para este período</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="dash-chart-legend">
+            <span class="legend-item">
+                <span class="legend-dot legend-dot--blue"></span>Ventas totales
+            </span>
+            <span class="legend-item">
+                <span class="legend-dot legend-dot--green"></span>Utilidad neta
+            </span>
+        </div>
+    </div>
+
+    <div class="dash-top-col">
+
+        <input type="radio" name="top-tab" id="tab-actual" checked hidden>
+        <input type="radio" name="top-tab" id="tab-anterior" hidden>
+
+        <div class="top-tabs-btns">
+            <label for="tab-anterior" class="chart-filter-btn">Semana anterior</label>
+            <label for="tab-actual" class="chart-filter-btn">Esta semana</label>
+        </div>
+
+        <div class="top-panel" id="panel-actual">
+
+            <div class="top-card top-card--ganancia">
+                <div class="top-card-header">
+                    <div class="top-card-icon top-card-icon--green">
+                        <i class="ph ph-trend-up"></i>
+                    </div>
+                    <div class="top-card-meta">
+                        <span class="top-card-label">Mayor ganancia esta semana</span>
+                        <span class="top-card-badge top-card-badge--green">
+                            <i class="ph ph-currency-dollar"></i> Rentabilidad
+                        </span>
+                    </div>
+                </div>
+                {% if top_ganancia_actual %}
+                <div class="top-card-body">
+                    <p class="top-card-nombre">{{ top_ganancia_actual.NombreProducto }}</p>
+                    <div class="top-card-stats">
+                        <div class="top-stat">
+                            <span class="top-stat-val top-stat-val--green">
+                                ${{ "%.2f"|format(top_ganancia_actual.TotalGanancia) }}
+                            </span>
+                            <span class="top-stat-lbl">Ganancia total</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">{{ top_ganancia_actual.TotalUnidades }}</span>
+                            <span class="top-stat-lbl">Unidades vendidas</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_ganancia_actual.PrecioVenta) }}</span>
+                            <span class="top-stat-lbl">Precio unitario</span>
+                        </div>
+                    </div>
+                    <div class="top-card-bar">
+                        <div class="top-card-bar-fill top-card-bar-fill--green" style="width:100%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="top-card-empty">
+                    <i class="ph ph-chart-bar"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="top-card top-card--unidades">
+                <div class="top-card-header">
+                    <div class="top-card-icon top-card-icon--blue">
+                        <i class="ph ph-stack"></i>
+                    </div>
+                    <div class="top-card-meta">
+                        <span class="top-card-label">Más unidades esta semana</span>
+                        <span class="top-card-badge top-card-badge--blue">
+                            <i class="ph ph-package"></i> Volumen
+                        </span>
+                    </div>
+                </div>
+                {% if top_unidades_actual %}
+                <div class="top-card-body">
+                    <p class="top-card-nombre">{{ top_unidades_actual.NombreProducto }}</p>
+                    <div class="top-card-stats">
+                        <div class="top-stat">
+                            <span class="top-stat-val top-stat-val--blue">
+                                {{ top_unidades_actual.TotalUnidades }}
+                            </span>
+                            <span class="top-stat-lbl">Unidades vendidas</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_unidades_actual.TotalGanancia) }}</span>
+                            <span class="top-stat-lbl">Ganancia total</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_unidades_actual.PrecioVenta) }}</span>
+                            <span class="top-stat-lbl">Precio unitario</span>
+                        </div>
+                    </div>
+                    <div class="top-card-bar">
+                        <div class="top-card-bar-fill top-card-bar-fill--blue" style="width:100%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="top-card-empty">
+                    <i class="ph ph-stack"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="top-panel" id="panel-anterior">
+
+            <div class="top-card top-card--ganancia">
+                <div class="top-card-header">
+                    <div class="top-card-icon top-card-icon--green">
+                        <i class="ph ph-trend-up"></i>
+                    </div>
+                    <div class="top-card-meta">
+                        <span class="top-card-label">Mayor ganancia semana anterior</span>
+                        <span class="top-card-badge top-card-badge--green">
+                            <i class="ph ph-currency-dollar"></i> Rentabilidad
+                        </span>
+                    </div>
+                </div>
+                {% if top_ganancia_anterior %}
+                <div class="top-card-body">
+                    <p class="top-card-nombre">{{ top_ganancia_anterior.NombreProducto }}</p>
+                    <div class="top-card-stats">
+                        <div class="top-stat">
+                            <span class="top-stat-val top-stat-val--green">
+                                ${{ "%.2f"|format(top_ganancia_anterior.TotalGanancia) }}
+                            </span>
+                            <span class="top-stat-lbl">Ganancia total</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">{{ top_ganancia_anterior.TotalUnidades }}</span>
+                            <span class="top-stat-lbl">Unidades vendidas</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_ganancia_anterior.PrecioVenta) }}</span>
+                            <span class="top-stat-lbl">Precio unitario</span>
+                        </div>
+                    </div>
+                    <div class="top-card-bar">
+                        <div class="top-card-bar-fill top-card-bar-fill--green" style="width:100%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="top-card-empty">
+                    <i class="ph ph-chart-bar"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="top-card top-card--unidades">
+                <div class="top-card-header">
+                    <div class="top-card-icon top-card-icon--blue">
+                        <i class="ph ph-stack"></i>
+                    </div>
+                    <div class="top-card-meta">
+                        <span class="top-card-label">Más unidades semana anterior</span>
+                        <span class="top-card-badge top-card-badge--blue">
+                            <i class="ph ph-package"></i> Volumen
+                        </span>
+                    </div>
+                </div>
+                {% if top_unidades_anterior %}
+                <div class="top-card-body">
+                    <p class="top-card-nombre">{{ top_unidades_anterior.NombreProducto }}</p>
+                    <div class="top-card-stats">
+                        <div class="top-stat">
+                            <span class="top-stat-val top-stat-val--blue">
+                                {{ top_unidades_anterior.TotalUnidades }}
+                            </span>
+                            <span class="top-stat-lbl">Unidades vendidas</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_unidades_anterior.TotalGanancia) }}</span>
+                            <span class="top-stat-lbl">Ganancia total</span>
+                        </div>
+                        <div class="top-stat">
+                            <span class="top-stat-val">${{ "%.2f"|format(top_unidades_anterior.PrecioVenta) }}</span>
+                            <span class="top-stat-lbl">Precio unitario</span>
+                        </div>
+                    </div>
+                    <div class="top-card-bar">
+                        <div class="top-card-bar-fill top-card-bar-fill--blue" style="width:100%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="top-card-empty">
+                    <i class="ph ph-stack"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<div class="dash-alerts-row fade-up">
+
+    <div class="alert-panel">
+        <div class="alert-panel-header">
+            <i class="ph ph-warning" style="color:var(--yellow)"></i>
+            <span>Stock bajo — Productos terminados</span>
+            <span class="section-count">{{ alertas_stock | length }}</span>
+        </div>
+        {% if alertas_stock %}
+        <ul class="alert-list">
+            {% for a in alertas_stock %}
+            <li class="alert-item alert-item--yellow">
+                <div class="alert-item-info">
+                    <span class="alert-item-nombre">{{ a.Nombre }}</span>
+                    <span class="alert-item-stock">
+                        Stock: <strong>{{ a.StockActual }}</strong> / mín {{ a.StockMinimo }}
+                    </span>
+                </div>
+                <form method="POST" action="{{ url_for('dashboard.solicitar_reabastecimiento') }}">
+                    <input type="hidden" name="id_producto" value="{{ a.IdProductoTerminado }}">
+                    <input type="hidden" name="cantidad" value="{{ a.StockMinimo - a.StockActual }}">
+                    <button type="submit" class="btn-reab">
+                        <i class="ph ph-plus"></i> Solicitar
+                    </button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="alert-empty">
+            <i class="ph ph-check-circle" style="color:var(--green)"></i>
+            <p>Sin alertas de stock</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="alert-panel">
+        <div class="alert-panel-header">
+            <i class="ph ph-warning-circle" style="color:var(--red)"></i>
+            <span>Stock bajo — Materia prima</span>
+            <span class="section-count">{{ alertas_mp | length }}</span>
+        </div>
+        {% if alertas_mp %}
+        <ul class="alert-list">
+            {% for a in alertas_mp %}
+            <li class="alert-item alert-item--red">
+                <div class="alert-item-info">
+                    <span class="alert-item-nombre">{{ a.Nombre }}</span>
+                    <span class="alert-item-stock">
+                        Stock: <strong>{{ a.StockActual }}</strong> {{ a.Abreviatura }} / mín {{ a.StockMinimo }}
+                    </span>
+                </div>
+                <span class="badge badge-red">Crítico</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="alert-empty">
+            <i class="ph ph-check-circle" style="color:var(--green)"></i>
+            <p>Sin alertas de materia prima</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
 
 {% endblock %}

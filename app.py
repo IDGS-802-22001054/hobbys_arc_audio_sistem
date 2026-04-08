@@ -2,9 +2,13 @@ from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
+from config import DevelopmentConfig
+from models import db, Usuario
+from sqlalchemy import text
+
 from blueprints.catalogo_cliente import catalogo_cliente_bp
-from blueprints.catalogo_cliente.routes import obtener_contexto_catalogo
 from blueprints.compras import compras_bp
+from blueprints.ventas.routes import ventas_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
 from blueprints.costos_utilidades import costos_utilidades_bp
@@ -27,9 +31,11 @@ proteccion_csrf = CSRFProtect()
 scheduler = APScheduler()
 
 login_manager = LoginManager()
+
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Inicia sesión para continuar'
 login_manager.login_message_category = 'warning'
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -64,6 +70,7 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(auth_bp)
     aplicacion.register_blueprint(empleados_bp)
     aplicacion.register_blueprint(clientes_bp)
+    aplicacion.register_blueprint(produccion_bp)
 
 
 def registrar_manejadores_error(aplicacion):
@@ -79,14 +86,12 @@ def registrar_context_processors(aplicacion):
         alertas = []
 
         if es_autorizado:
-            query = text(
-                """
+            query = text("""
                 SELECT IdAlertaSistema, Mensaje, ReferenciaId
                 FROM alertasistema
                 WHERE Leida = 0 AND TipoAlerta = 'STOCK_BAJO'
                 ORDER BY FechaGeneracion DESC
-            """
-            )
+            """)
             alertas = db.session.execute(query).fetchall()
 
         return dict(
@@ -111,6 +116,8 @@ def crear_app():
         realizar_corte_automatico(aplicacion)
         
     scheduler.start()
+
+    login_manager.init_app(aplicacion)
 
     inicializar_base_datos(aplicacion)
     registrar_blueprints(aplicacion)

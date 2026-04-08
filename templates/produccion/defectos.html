@@ -1,0 +1,94 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}REGISTRAR DEFECTOS{% endblock %}
+
+{% block container %}
+
+<div class="page-header fade-up">
+    <div class="page-header-left">
+        <a href="{{ url_for('produccion.index') }}" class="btn-back">
+            <i class="ph ph-arrow-left"></i>
+        </a>
+        <div>
+            <h2 class="page-title">Registrar defectos</h2>
+            <p class="page-subtitle">
+                Producción <strong>#{{ prod.IdProduccion }}</strong> —
+                {{ prod.NombreProducto }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="form-card fade-up">
+
+    <div class="form-info-row">
+        <div class="form-info-item">
+            <span class="form-info-lbl">Producto</span>
+            <span class="form-info-val">{{ prod.NombreProducto }}</span>
+        </div>
+        <div class="form-info-item">
+            <span class="form-info-lbl">Cantidad planeada</span>
+            <span class="form-info-val">{{ prod.CantidadPlaneada }} pzas</span>
+        </div>
+        <div class="form-info-item">
+            <span class="form-info-lbl">Inicio</span>
+            <span class="form-info-val">
+                {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '—' }}
+            </span>
+        </div>
+        <div class="form-info-item">
+            <span class="form-info-lbl">Estado</span>
+            <span class="badge badge-yellow">{{ prod.Estado }}</span>
+        </div>
+    </div>
+
+    <hr class="form-divider">
+
+    <form method="POST" action="{{ url_for('produccion.registrar_defectos', id=prod.IdProduccion) }}">
+
+        <div class="form-group">
+            <label class="form-label" for="cantidad">
+                <i class="ph ph-warning" style="color:var(--red)"></i>
+                Cantidad de piezas defectuosas <span class="required">*</span>
+            </label>
+            <input
+                type="number"
+                id="cantidad"
+                name="cantidad"
+                class="form-input"
+                min="1"
+                max="{{ prod.CantidadPlaneada }}"
+                placeholder="Ej. 3"
+                required
+            >
+            <span class="form-hint">Máximo {{ prod.CantidadPlaneada }} piezas (cantidad planeada)</span>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="descripcion">
+                <i class="ph ph-note-pencil"></i>
+                Descripción del defecto
+            </label>
+            <textarea
+                id="descripcion"
+                name="descripcion"
+                class="form-input form-textarea"
+                rows="3"
+                placeholder="Ej. Fisura en el molde, color inconsistente, medidas fuera de tolerancia..."
+            ></textarea>
+            <span class="form-hint">Opcional — ayuda al análisis de calidad</span>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('produccion.index') }}" class="btn btn-outline">
+                <i class="ph ph-x"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-red">
+                <i class="ph ph-warning"></i> Registrar defecto
+            </button>
+        </div>
+
+    </form>
+</div>
+
+{% endblock %}
