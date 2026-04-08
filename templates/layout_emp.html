@@ -84,7 +84,7 @@
                 {% endif %}
 
                 {% if rol in ['administrador', 'consulta'] %}
-                <a href="#" class="nav-item {% if active == 'costos' %}active{% endif %}">
+                <a href="{{ url_for('costos_utilidades.listar') }}" class="nav-item {% if active == 'costos' %}active{% endif %}">
                     <i class="ph ph-currency-dollar"></i> Costos y Utilidades
                 </a>
                 {% endif %}
