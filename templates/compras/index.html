@@ -8,13 +8,14 @@
     
     <div class="header-tools">
         <form action="{{ url_for('compras.listar') }}" method="GET" class="search-container">
-            <input type="text" name="search" placeholder="Buscar Compra" value="{{ search or '' }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="search" placeholder="Buscar Compra" value="{{ request.args.get('search', '') }}">
             <button type="submit" style="background:none; border:none; cursor:pointer;">
                 <i class="ph ph-magnifying-glass"></i>
             </button>
         </form>
         
-        <a href="#" class="btn-add">
+        <a href="{{ url_for('compras.nueva_compra')}}" class="btn-add">
             + NUEVA COMPRA
         </a>
     </div>
@@ -35,22 +36,31 @@
         <tbody>
             {% for c in compras %}
             <tr>
-                <td>#CP-{{ c.IdCompraMateriaPrima }}</td>
+                <td>#CP-{{ c.id }}</td>
+                
                 <td style="color: var(--text)">
-                    {{ c.FechaCompra.strftime('%d/%m/%Y') }}
-                    <span style="color: var(--muted2); font-size: 11px; margin-left: 5px;">
-                        {{ c.FechaCompra.strftime('%H:%M') }}
-                    </span>
+                    {% if c.fecha %}
+                        {{ c.fecha.strftime('%d/%m/%Y') }}
+                        <span style="color: var(--muted2); font-size: 11px; margin-left: 5px;">
+                            {{ c.fecha.strftime('%H:%M') }}
+                        </span>
+                    {% else %}
+                        ---
+                    {% endif %}
                 </td>
-                <td>{{ c.proveedor.NombreEmpresa if c.proveedor else 'Sin Proveedor' }}</td>
+
+                <td>{{ c.proveedor_nombre if c.proveedor_nombre else 'Sin Proveedor' }}</td>
+
                 <td style="font-weight: bold; color: var(--blue);">
-                    $ {{ "{:,.2f}".format(c.TotalCompra) }}
+                    $ {{ "{:,.2f}".format(c.total or 0) }}
                 </td>
+
                 <td style="font-size: 11px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    {{ c.Observaciones or '---' }}
+                    {{ c.obs or '---' }}
                 </td>
+
                 <td class="actions-cell" style="text-align: center;">
-                    <a href="{{ url_for('compras.ver_detalle', id=c.IdCompraMateriaPrima) }}" class="btn-square bg-view" title="Ver Detalles">
+                    <a href="{{ url_for('compras.ver_detalle', id=c.id) }}" class="btn-square bg-view" title="Ver Detalles">
                         <i class="ph ph-eye"></i>
                     </a>
                 </td>

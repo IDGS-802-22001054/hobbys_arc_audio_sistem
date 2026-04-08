@@ -1,0 +1,38 @@
+{% extends "layout_emp.html" %}
+{% block page_title %}REPORTE{% endblock %}
+{% block container %}
+<div class="management-header fade-up">
+    <h2>GENERAR REPORTE DE COSTOS</h2>
+</div>
+
+<div class="table-wrapper fade-up" style="background: #1a1c23; padding: 30px; border-radius: 15px; max-width: 500px; margin: 40px auto; border: 1px solid #2d2f39;">
+    <form action="{{ url_for('costos_utilidades.generar_archivo_reporte') }}" method="GET" target="_blank">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="margin-bottom: 20px;">
+            <label style="color: #8a8d93; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: block;">DESDE:</label>
+            <input type="date" name="f_inicio" value="{{ hoy }}" required style="width: 100%; background: #0f111a; border: 1px solid #2d2f39; color: white; padding: 12px; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="color: #8a8d93; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: block;">HASTA:</label>
+            <input type="date" name="f_fin" value="{{ hoy }}" required style="width: 100%; background: #0f111a; border: 1px solid #2d2f39; color: white; padding: 12px; border-radius: 8px;">
+        </div>
+
+        <div style="margin-bottom: 30px;">
+            <label style="color: #8a8d93; font-size: 12px; font-weight: bold; margin-bottom: 8px; display: block;">FORMATO:</label>
+            <select name="formato" style="width: 100%; background: #0f111a; border: 1px solid #2d2f39; color: white; padding: 12px; border-radius: 8px;">
+                <option value="pdf">📄 Documento PDF (Imprimible)</option>
+                <option value="excel">📊 Hoja de Excel (Datos)</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-add" style="width: 100%; background: #f1c40f; color: black; font-weight: 800; padding: 15px; border: none; cursor: pointer; border-radius: 10px;">
+            <i class="ph ph-file-arrow-down"></i> GENERAR AHORA
+        </button>
+        
+        <div style="text-align: center; margin-top: 15px;">
+            <a href="{{ url_for('costos_utilidades.listar') }}" style="color: #8a8d93; text-decoration: none; font-size: 13px;">Regresar al panel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

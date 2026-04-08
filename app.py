@@ -11,15 +11,25 @@ from blueprints.compras import compras_bp
 from blueprints.ventas.routes import ventas_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
+from blueprints.costos_utilidades import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
-from blueprints.dashboard.routes_dashboard import dashboard_bp
-from blueprints.clientes.routes_cliente import clientes_bp
-from blueprints.auth.routes_auth import auth_bp
-from blueprints.empleados.routes_empleado import empleados_bp
-from blueprints.producción.routes_produccion import produccion_bp
+from blueprints.ventas import ventas_bp
+from dashboard.routes_dashboard import dashboard_bp
+from clientes.routes_cliente import clientes_bp
+from auth.routes_auth import auth_bp
+from empleados.routes_empleado import empleados_bp
+from config import DevelopmentConfig
+from models import db, Usuario
+from models import db, CorteVentaDiario
+from flask import session
+from sqlalchemy import text
+from flask_apscheduler import APScheduler
+from datetime import date, timedelta
 
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
+scheduler = APScheduler()
+
 login_manager = LoginManager()
 
 login_manager.login_view = 'auth.login'
@@ -31,6 +41,17 @@ login_manager.login_message_category = 'warning'
 def load_user(user_id):
     return db.session.get(Usuario, int(user_id))
 
+def realizar_corte_automatico(aplicacion):
+    with aplicacion.app_context():
+        ayer = date.today() - timedelta(days=1)
+        existe = CorteVentaDiario.query.filter_by(FechaCorte=ayer).first()
+        if not existe:
+            nuevo_corte = CorteVentaDiario(
+                FechaCorte=ayer,
+                IdUsuarioRegistro=1 
+            )
+            db.session.add(nuevo_corte)
+            db.session.commit()
 
 def inicializar_base_datos(aplicacion):
     with aplicacion.app_context():
@@ -43,6 +64,7 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(proveedores_bp)
     aplicacion.register_blueprint(materia_prima_bp)
     aplicacion.register_blueprint(compras_bp)
+    aplicacion.register_blueprint(costos_utilidades_bp)
     aplicacion.register_blueprint(ventas_bp)
     aplicacion.register_blueprint(dashboard_bp)
     aplicacion.register_blueprint(auth_bp)
@@ -60,7 +82,7 @@ def registrar_manejadores_error(aplicacion):
 def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
-        es_autorizado = True
+        es_autorizado = session.get('rol') in ['Administrador', 'Almacenista']
         alertas = []
 
         if es_autorizado:
@@ -87,6 +109,13 @@ def crear_app():
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
     login_manager.init_app(aplicacion)
+    scheduler.init_app(aplicacion)
+    
+    @scheduler.task('cron', id='corte_diario_job', hour=0, minute=0)
+    def job_corte():
+        realizar_corte_automatico(aplicacion)
+        
+    scheduler.start()
 
     login_manager.init_app(aplicacion)
 

@@ -458,6 +458,14 @@ class ProductoTerminado(BaseModel):
             total += consumo_total * precio_unitario
 
         return total.quantize(Decimal("0.01"))
+    
+    @property
+    def UtilidadPorPieza(self):
+        return (_decimal_modelo(self.PrecioVenta) - self.CostoProduccion).quantize(Decimal("0.01"))
+
+    @property
+    def TotalDefectuosos(self):
+        return sum((p.CantidadDefectuosa for p in self.producciones), 0)
 
 
 class Receta(BaseModel):
