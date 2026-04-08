@@ -21,6 +21,10 @@
     
     <form action="{{ url_for('materia_prima.registrar') }}" method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<<<<<<< HEAD
+=======
+        
+>>>>>>> main
         <label style="display: block; margin-bottom: 15px; color: var(--blue); font-size: 13px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">1. Información General</label>
         
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px;">
@@ -42,7 +46,7 @@
         
         <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 25px; margin-bottom: 25px;">
             <div class="form-group">
-                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 10px;">PRECIO UNITARIO ($)</label>
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 10px;">PRECIO POR KG/L ($)</label>
                 <div style="position: relative;">
                     <span style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--green); font-weight: 800;">$</span>
                     <input type="number" name="precio" step="0.0001" class="btn" 

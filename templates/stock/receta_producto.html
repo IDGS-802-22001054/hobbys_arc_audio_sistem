@@ -12,7 +12,7 @@
         <div>
             <p class="section-eyebrow">Produccion</p>
             <h1 class="section-title">Receta de {{ producto.nombre }}</h1>
-            <p class="section-copy">Define la merma y los materiales que requiere este producto terminado.</p>
+            <p class="section-copy">Activa la receta y registra cada material con su cantidad requerida y merma individual.</p>
         </div>
 
         <div class="detail-actions">
@@ -40,14 +40,17 @@
 
                 <div class="recipe-form-grid">
                     <div class="form-group">
-                        <label for="merma">Merma</label>
-                        <input id="merma" name="merma" type="number" min="0" step="0.01" class="form-input" value="{{ receta.Merma if receta else '0.00' }}" required>
+                        <label>Estado</label>
+                        <div class="form-input" style="display:flex; align-items:center; min-height:46px;">
+                            {{ "La receta esta activa y lista para capturar materiales." if receta and receta.Activa else "Primero activa la receta para poder agregar materiales." }}
+                        </div>
+                        <small class="form-hint">La merma ya no se captura de forma general; ahora se registra en cada detalle.</small>
                     </div>
                 </div>
 
                 <div class="edit-actions">
                     <button type="submit" class="btn btn-green">
-                        <i class="ph ph-floppy-disk"></i> Guardar receta
+                        <i class="ph ph-floppy-disk"></i> Activar receta
                     </button>
                 </div>
             </form>
@@ -78,7 +81,21 @@
 
                     <div class="form-group">
                         <label for="cantidad_requerida">Cantidad requerida</label>
-                        <input id="cantidad_requerida" name="cantidad_requerida" type="number" min="0.01" step="0.01" class="form-input" value="{{ detalle_form.cantidad }}" required>
+                        <input id="cantidad_requerida" name="cantidad_requerida" type="number" min="1" step="1" class="form-input" value="{{ detalle_form.cantidad }}" required>
+                        <small class="form-hint">Captura un valor entero segun la unidad seleccionada.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="merma_detalle" id="merma_label">Merma</label>
+                        <input id="merma_detalle" name="merma_detalle" type="number" min="0" step="1" class="form-input" value="{{ detalle_form.merma }}" placeholder="Selecciona una materia prima" required>
+                        <small class="form-hint" id="merma_hint">Selecciona una materia prima para saber si la merma debe registrarse en gramos (g) o mililitros (ml).</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unidad_registro">Unidad a guardar</label>
+                        <select id="unidad_registro" name="unidad_registro" class="form-input" required>
+                            <option value="">Selecciona una unidad</option>
+                        </select>
                     </div>
                 </div>
 
@@ -102,7 +119,8 @@
             <div class="recipe-detail-item">
                 <div>
                     <strong>{{ detalle.materia_prima }}</strong>
-                    <span>{{ detalle.cantidad }} {{ detalle.unidad }}</span>
+                    <span>{{ detalle.cantidad }} {{ detalle.unidad }} requeridos</span>
+                    <span>Merma: {{ detalle.merma }} {{ detalle.unidad }}</span>
                 </div>
 
                 <form method="post">
@@ -118,10 +136,76 @@
             <div class="empty-state">
                 <i class="ph ph-blueprint"></i>
                 <h3>La receta aun no tiene materiales</h3>
-                <p>Guarda la receta general y despues agrega las materias primas necesarias.</p>
+                <p>Activa la receta y despues agrega las materias primas con su merma individual.</p>
             </div>
             {% endfor %}
         </div>
     </div>
 </section>
+<script>
+    const materiasConfig = {{ materias_primas_config | tojson }};
+    const materiaSelect = document.getElementById("materia_prima_id");
+    const unidadSelect = document.getElementById("unidad_registro");
+    const mermaLabel = document.getElementById("merma_label");
+    const mermaHint = document.getElementById("merma_hint");
+    const mermaInput = document.getElementById("merma_detalle");
+    const unidadSeleccionada = {{ detalle_form.unidad_registro | tojson }};
+
+    function actualizarAyudaMerma(materiaId) {
+        const materia = materiasConfig.find((item) => String(item.id) === String(materiaId));
+        const unidadBase = materia ? materia.unidad_base : "";
+
+        if (unidadBase === "g") {
+            mermaLabel.textContent = "Merma a registrar (g)";
+            mermaHint.textContent = "Solo se permite registrar la merma en gramos (g).";
+            mermaInput.placeholder = "Ingresa la merma en gramos";
+            return;
+        }
+
+        if (unidadBase === "ml") {
+            mermaLabel.textContent = "Merma a registrar (ml)";
+            mermaHint.textContent = "Solo se permite registrar la merma en mililitros (ml).";
+            mermaInput.placeholder = "Ingresa la merma en mililitros";
+            return;
+        }
+
+        mermaLabel.textContent = "Merma";
+        mermaHint.textContent = "Selecciona una materia prima para saber si la merma debe registrarse en gramos (g) o mililitros (ml).";
+        mermaInput.placeholder = "Selecciona una materia prima";
+    }
+
+    function renderOpcionesUnidad(materiaId) {
+        const materia = materiasConfig.find((item) => String(item.id) === String(materiaId));
+        const opciones = materia ? materia.opciones_unidad : [];
+
+        unidadSelect.innerHTML = "";
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Selecciona una unidad";
+        unidadSelect.appendChild(placeholder);
+
+        opciones.forEach((opcion, index) => {
+            const option = document.createElement("option");
+            option.value = opcion.value;
+            option.textContent = opcion.label;
+
+            if (unidadSeleccionada) {
+                option.selected = opcion.value === unidadSeleccionada;
+            } else if (index === 0) {
+                option.selected = true;
+            }
+
+            unidadSelect.appendChild(option);
+        });
+    }
+
+    materiaSelect.addEventListener("change", () => {
+        renderOpcionesUnidad(materiaSelect.value);
+        actualizarAyudaMerma(materiaSelect.value);
+    });
+
+    renderOpcionesUnidad(materiaSelect.value);
+    actualizarAyudaMerma(materiaSelect.value);
+</script>
 {% endblock %}

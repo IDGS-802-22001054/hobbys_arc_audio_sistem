@@ -3,8 +3,10 @@ from models import db, CompraMateriaPrima, CompraMateriaPrimaDetalle, MateriaPri
 from sqlalchemy import text
 from . import compras_bp
 from sqlalchemy import or_, func
+from flask_login import login_required
 
 @compras_bp.route('/compras')
+@login_required
 def listar():
     search = request.args.get('search', '').strip()
     
@@ -38,6 +40,7 @@ def listar():
     return render_template('compras/index.html', compras=compras)
 
 @compras_bp.route('/nueva', methods=['GET', 'POST'])
+@login_required
 def nueva_compra():
     id_usuario = 1 
 
@@ -107,6 +110,7 @@ def nueva_compra():
                            persist=datos_persistentes)
 
 @compras_bp.route('/detalle/<int:id>')
+@login_required
 def ver_detalle(id):
     sql_cabecera = text("""
         SELECT 

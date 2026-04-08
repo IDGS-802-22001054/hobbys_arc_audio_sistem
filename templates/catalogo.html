@@ -141,8 +141,7 @@
                 </div>
             </div>
 
-            <form method="post" action="{{ url_for('catalogo_cliente.realizar_compra') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <form method="get" action="{{ url_for('catalogo_cliente.checkout') }}">
                 <input type="hidden" name="q" value="{{ busqueda or '' }}">
                 <button type="submit" class="btn btn-blue cart-action" {% if not carrito %}disabled{% endif %}>
                     Realizar compra

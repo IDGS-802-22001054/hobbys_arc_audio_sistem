@@ -1,13 +1,16 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask_login import current_user, login_required
 from models import db, MateriaPrima, UnidadMedida, Proveedor, MovimientoMateriaPrima, Usuario
 from sqlalchemy.orm import joinedload
 from decimal import Decimal, InvalidOperation
 from sqlalchemy import text
 from datetime import datetime
 from . import materia_prima_bp
+from flask_login import login_required
 
 
 @materia_prima_bp.route('/inventario')
+@login_required
 def listar():
     search = request.args.get('search')
     query = MateriaPrima.query 
@@ -19,11 +22,13 @@ def listar():
     return render_template('materia_prima/index.html', materiales=materiales, search=search)
 
 @materia_prima_bp.route('/inventario/detalles/<int:id>')
+@login_required
 def detalles(id):
     mp = MateriaPrima.query.get_or_404(id)
     return render_template('materia_prima/detalles.html', mp=mp)
 
 @materia_prima_bp.route('/inventario/movimiento/<tipo>')
+@login_required
 def formulario_movimiento(tipo):
     tipo_actual = request.args.get('tipo_mov', tipo).upper()
     
@@ -60,6 +65,7 @@ def formulario_movimiento(tipo):
                            unidades=opciones_unidades)
 
 @materia_prima_bp.route('/inventario/movimiento/registrar', methods=['POST'])
+@login_required
 def registrar_movimiento():
     id_mp = request.form.get('id_mp')
     tipo = request.form.get('tipo').upper()
@@ -67,7 +73,7 @@ def registrar_movimiento():
     unidad_reg = request.form.get('unidad_registro') # L, ML, KG o G
     costo = Decimal(request.form.get('costo') or '0')
     motivo = request.form.get('motivo')
-    id_usuario = session.get('user_id', 1)
+    id_usuario = current_user.IdUsuario
 
     cantidad_final = cantidad_raw
     if unidad_reg in ['L', 'KG']:
@@ -94,6 +100,7 @@ def registrar_movimiento():
     return redirect(url_for('materia_prima.listar'))
 
 @materia_prima_bp.route('/inventario/historial')
+@login_required
 def historial():
     movimientos = MovimientoMateriaPrima.query.options(
         joinedload(MovimientoMateriaPrima.usuario).joinedload(Usuario.persona),
@@ -103,6 +110,7 @@ def historial():
     return render_template('materia_prima/historial.html', movimientos=movimientos)
 
 @materia_prima_bp.route('/inventario/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar(id):
     mp = MateriaPrima.query.get_or_404(id)
     if request.method == 'POST':
@@ -121,6 +129,7 @@ def editar(id):
     return render_template('materia_prima/editar.html', mp=mp, proveedores=proveedores)
 
 @materia_prima_bp.route('/inventario/nuevo', methods=['GET', 'POST'])
+@login_required
 def registrar():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
@@ -159,6 +168,7 @@ def registrar():
     return render_template('materia_prima/agregar.html', proveedores=proveedores)
 
 @materia_prima_bp.route('/inventario/desactivar/<int:id>')
+@login_required
 def desactivar(id):
     mp = MateriaPrima.query.get_or_404(id)
     
@@ -173,6 +183,7 @@ def desactivar(id):
     return redirect(url_for('materia_prima.listar'))
 
 @materia_prima_bp.route('/inventario/reactivar/<int:id>')
+@login_required
 def reactivar(id):
     mp = MateriaPrima.query.get_or_404(id)
     
@@ -187,6 +198,7 @@ def reactivar(id):
     return redirect(url_for('materia_prima.listar'))
 
 @materia_prima_bp.route('/alerta/leer/<int:id_alerta>')
+@login_required
 def leer_alerta(id_alerta):
     try:
         alerta = db.session.execute(

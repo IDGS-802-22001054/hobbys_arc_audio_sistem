@@ -1,0 +1,158 @@
+:root {
+    --primary: #f1c40f;
+    --dark: #1a1c23;
+    --light-bg: #ffffff;
+    --text-dark: #333333;
+    --table-border: #dee2e6;
+}
+
+body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    color: var(--text-dark); 
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5;
+}
+
+.no-print-nav {
+    background: var(--dark);
+    padding: 15px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.btn-nav {
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.3s;
+}
+
+.btn-back { color: #8a8d93; border: 1px solid #3e414d; }
+.btn-back:hover { background: #3e414d; color: white; }
+.btn-print { background: var(--primary); color: black; border: none; cursor: pointer; }
+.btn-print:hover { background: #d4ac0d; }
+
+
+.header-table {
+    width: 100%;
+    border-bottom: 3px solid var(--primary);
+    margin-bottom: 25px;
+    position: relative;
+}
+
+/* *** SECCIÓN DE LOGO ACTUALIZADA EN reporte_pdf.css *** */
+.logo-container {
+    width: 100%;
+    margin-bottom: 10px;
+    display: flex;
+    /* CAMBIO: flex-start mueve el contenido al inicio (izquierda) */
+    justify-content: flex-start; 
+}
+
+.logo-img {
+    height: 35px; /* Mantiene el tamaño "chiquito" que pediste */
+    width: auto;
+    display: block;
+}
+
+.company-name { font-size: 24px; font-weight: 900; margin: 0; }
+.report-title { font-size: 18px; color: #666; margin: 5px 0; }
+
+
+
+table.data-table th { 
+    background-color: #f8f9fa; 
+    color: #333;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 12px;
+    border-bottom: 2px solid var(--table-border);
+    text-align: left;
+}
+
+table.data-table td { 
+    padding: 12px; 
+    font-size: 12px; 
+    border-bottom: 1px solid #eee;
+}
+
+.total-row { 
+    background: #fdfae9; 
+    font-weight: bold; 
+    font-size: 13px !important;
+}
+
+.footer {
+    margin-top: 50px;
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+/* Ajuste del contenedor principal para impresión */
+.report-page {
+    background: var(--light-bg);
+    width: 210mm; 
+    margin: 30px auto;
+    padding: 15mm; /* Un poco menos de padding para dar espacio a la tabla */
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    min-height: 297mm;
+    box-sizing: border-box; /* Crucial para que el padding no sume al ancho */
+}
+
+/* Forzar que la tabla use el 100% del espacio disponible */
+table.data-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    margin-top: 15px;
+    table-layout: auto; /* Permite que las columnas se ajusten al contenido */
+}
+
+/* Media Query optimizada para impresión */
+@media print {
+    @page {
+        size: A4;
+        margin: 10mm;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+
+    body { 
+        background: white; 
+        margin: 0; 
+        padding: 0; 
+        padding-top: 1cm;
+        padding-bottom: 1cm;
+    }
+
+    .no-print-nav, .no-print { 
+        display: none !important; 
+    }
+
+    .report-page { 
+        margin: 0 !important; 
+        box-shadow: none !important; 
+        width: 100% !important; 
+        padding: 0 !important; /* El margen lo controla @page */
+        min-height: auto;
+    }
+
+    tr { 
+        page-break-inside: avoid; 
+    }
+
+}

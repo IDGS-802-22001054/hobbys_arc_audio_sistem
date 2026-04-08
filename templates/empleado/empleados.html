@@ -1,0 +1,153 @@
+{% extends "layout_emp.html" %}
+{% block page_title %}Gestión de Empleados{% endblock %}
+{% block container %}
+
+<div class="page-header fade-up">
+    <h2 class="page-header-title">GESTIÓN DE EMPLEADOS</h2>
+    <form method="GET" action="{{ url_for('empleados.empleados') }}">
+        <div class="search-wrap">
+            <input type="text" name="q" class="search-input" placeholder="Buscar Empleado..." value="{{ q }}">
+            <i class="ph ph-magnifying-glass"></i>
+        </div>
+    </form>
+    <div class="page-header-actions">
+        <a href="{{ url_for('empleados.nuevo_empleado') }}" class="btn btn-blue">
+            <i class="ph ph-plus"></i> Nuevo Empleado
+        </a>
+    </div>
+</div>
+
+<div class="table-card fade-up" style="animation-delay:0.07s">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>Apellidos</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                <th>Puesto</th>
+                <th>Salario</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Estatus</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if empleados %}
+            {% for e in empleados %}
+            <tr>
+                <td class="td-mono">{{ e.IdEmpleado }}</td>
+
+                <td>
+                    <div class="td-photo-placeholder">
+                        {% if e.Foto %}
+                        <img src="{{ e.Foto }}" alt="{{ e.Nombre }}">
+                        {% else %}
+                        <i class="ph ph-user"></i>
+                        {% endif %}
+                    </div>
+                </td>
+
+                <td>{{ e.Nombre }}</td>
+
+                <td>{{ e.Apellidos }}</td>
+
+                <td class="td-mono td-email">{{ e.CorreoElectronico }}</td>
+
+                <td class="td-mono">{{ e.Telefono or '—' }}</td>
+
+                <td>
+                    {% if e.Puesto %}
+                    <span class="puesto-chip">{{ e.Puesto }}</span>
+                    {% else %}
+                    <span class="td-null">—</span>
+                    {% endif %}
+                </td>
+
+                <td class="td-salario">
+                    {% if e.Salario is not none %}
+                    ${{ "{:,.2f}".format(e.Salario) }}
+                    {% else %}
+                    <span class="td-null">—</span>
+                    {% endif %}
+                </td>
+
+                <td class="td-mono">
+                    {% if e.Identificador %}
+                    {{ e.Identificador }}
+                    {% else %}
+                    <span class="td-null">—</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if e.NombreRol %}
+                    {% set rol = e.NombreRol | lower %}
+                    {% if 'admin' in rol %}
+                    <span class="role-badge role-admin"><i class="ph ph-shield-check"></i> {{ e.NombreRol }}</span>
+                    {% elif 'vend' in rol %}
+                    <span class="role-badge role-vendedor"><i class="ph ph-tag"></i> {{ e.NombreRol }}</span>
+                    {% elif 'alm' in rol or 'prod' in rol %}
+                    <span class="role-badge role-almacen"><i class="ph ph-warehouse"></i> {{ e.NombreRol }}</span>
+                    {% else %}
+                    <span class="role-badge role-otro"><i class="ph ph-circles-three"></i> {{ e.NombreRol }}</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="td-null">—</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if e.Activo %}
+                    <span class="status-chip status-on"><i class="ph ph-check-circle"></i> Activo</span>
+                    {% else %}
+                    <span class="status-chip status-off"><i class="ph ph-x-circle"></i> Inactivo</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    <div class="action-btns">
+                        <a href="{{ url_for('empleados.ver_empleado', id=e.IdEmpleado) }}" class="action-btn view"
+                            title="Ver">
+                            <i class="ph ph-eye"></i>
+                        </a>
+                        <a href="{{ url_for('empleados.editar_empleado', id=e.IdEmpleado) }}" class="action-btn edit"
+                            title="Editar">
+                            <i class="ph ph-pencil-simple"></i>
+                        </a>
+                        {% if e.Activo %}
+                        <a href="{{ url_for('empleados.eliminar_empleado', id=e.IdEmpleado) }}"
+                            class="action-btn btn-red btn-sm">
+                            <i class="ph ph-prohibit"></i> 
+                        </a>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('empleados.activar_empleado', id=e.IdEmpleado) }}"
+                            style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="action-btn btn-green btn-sm">
+                                <i class="ph ph-check-circle"></i> 
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="12">
+                    <div class="empty-state">
+                        <i class="ph ph-users-three"></i>
+                        <p>No hay empleados registrados.</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

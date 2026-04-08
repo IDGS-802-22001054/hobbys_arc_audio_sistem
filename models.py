@@ -1,8 +1,31 @@
 from flask_sqlalchemy import SQLAlchemy
+from decimal import Decimal
 from sqlalchemy import UniqueConstraint, text as sql_text
 from sqlalchemy.dialects.mysql import LONGBLOB, MEDIUMBLOB
+from flask_login import UserMixin
 
 db = SQLAlchemy()
+
+
+def _decimal_modelo(valor):
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor or 0)).quantize(Decimal("0.01"))
+
+
+def _costo_unitario_materia(materia_prima):
+    if materia_prima is None:
+        return Decimal("0.00")
+
+    precio_unitario = _decimal_modelo(materia_prima.PrecioUnitario)
+    abreviatura = ""
+    if materia_prima.unidad_medida:
+        abreviatura = (materia_prima.unidad_medida.Abreviatura or "").strip().lower()
+
+    if abreviatura in {"g", "ml"}:
+        return (precio_unitario / Decimal("1000")).quantize(Decimal("0.0001"))
+
+    return precio_unitario
 
 
 class BaseModel(db.Model):
@@ -17,8 +40,7 @@ class Rol(BaseModel):
     Nombre = db.Column(db.String(50), nullable=False, unique=True)
     Descripcion = db.Column(db.String(200))
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
-
-    usuarios = db.relationship("Usuario", back_populates="rol")
+    usuarios = db.relationship("Usuario", back_populates="rol", lazy=True)
 
 
 class Persona(BaseModel):
@@ -29,7 +51,11 @@ class Persona(BaseModel):
     Apellidos = db.Column(db.String(150), nullable=False)
     Telefono = db.Column(db.String(30))
     CorreoElectronico = db.Column(db.String(120), nullable=False, unique=True)
-    Direccion = db.Column(db.String(255))
+    Calle = db.Column(db.String(120))
+    Colonia = db.Column(db.String(120))
+    NumeroExterior = db.Column(db.String(20))
+    NumeroInterior = db.Column(db.String(20))
+    CodigoPostal = db.Column(db.String(10))
     Foto = db.Column(LONGBLOB)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     FechaRegistro = db.Column(
@@ -39,6 +65,32 @@ class Persona(BaseModel):
     cliente = db.relationship("Cliente", back_populates="persona", uselist=False)
     empleado = db.relationship("Empleado", back_populates="persona", uselist=False)
     usuario = db.relationship("Usuario", back_populates="persona", uselist=False)
+
+    @property
+    def direccion_formateada(self):
+        partes = []
+        calle = (self.Calle or "").strip()
+        numero_exterior = (self.NumeroExterior or "").strip()
+        numero_interior = (self.NumeroInterior or "").strip()
+        colonia = (self.Colonia or "").strip()
+        codigo_postal = (self.CodigoPostal or "").strip()
+
+        primera_linea = " ".join(
+            parte for parte in [calle, f"No. {numero_exterior}" if numero_exterior else ""] if parte
+        ).strip()
+        if numero_interior:
+            primera_linea = " ".join(
+                parte for parte in [primera_linea, f"Int. {numero_interior}"] if parte
+            ).strip()
+
+        if primera_linea:
+            partes.append(primera_linea)
+        if colonia:
+            partes.append(f"Col. {colonia}")
+        if codigo_postal:
+            partes.append(f"CP {codigo_postal}")
+
+        return ", ".join(partes)
 
 
 class Cliente(BaseModel):
@@ -53,8 +105,32 @@ class Cliente(BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
 
-    persona = db.relationship("Persona", back_populates="cliente")
-    ventas = db.relationship("Venta", back_populates="cliente")
+    persona = db.relationship("Persona", back_populates="cliente", uselist=False)
+    ventas = db.relationship("Venta", back_populates="cliente", lazy=True)
+    tarjetas = db.relationship("TarjetaCliente", back_populates="cliente", lazy=True)
+
+
+class TarjetaCliente(BaseModel):
+    __tablename__ = "TarjetaCliente"
+
+    IdTarjetaCliente = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    IdCliente = db.Column(db.Integer, db.ForeignKey("Cliente.IdCliente"), nullable=False)
+    Alias = db.Column(db.String(100))
+    Titular = db.Column(db.String(150), nullable=False)
+    Marca = db.Column(db.String(50), nullable=False)
+    Ultimos4 = db.Column(db.String(4), nullable=False)
+    MesExpiracion = db.Column(db.Integer, nullable=False)
+    AnioExpiracion = db.Column(db.Integer, nullable=False)
+    TokenPasarela = db.Column(db.String(255), nullable=False, unique=True)
+    EsPredeterminada = db.Column(
+        db.Boolean, nullable=False, server_default=sql_text("0")
+    )
+    Activa = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
+    FechaRegistro = db.Column(
+        db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
+    )
+
+    cliente = db.relationship("Cliente", back_populates="tarjetas", uselist=False)
 
 
 class Empleado(BaseModel):
@@ -70,10 +146,10 @@ class Empleado(BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
 
-    persona = db.relationship("Persona", back_populates="empleado")
+    persona = db.relationship("Persona", back_populates="empleado", uselist=False)
 
 
-class Usuario(BaseModel):
+class Usuario(UserMixin, BaseModel):
     __tablename__ = "Usuario"
 
     IdUsuario = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -87,69 +163,72 @@ class Usuario(BaseModel):
     )
     FechaUltimoAcceso = db.Column(db.DateTime)
 
-    persona = db.relationship("Persona", back_populates="usuario")
-    rol = db.relationship("Rol", back_populates="usuarios")
+    def get_id(self):
+        return str(self.IdUsuario)
+
+    persona = db.relationship("Persona", back_populates="usuario", uselist=False)
+    rol = db.relationship("Rol", back_populates="usuarios", uselist=False)
     configuraciones_actualizadas = db.relationship(
         "ConfiguracionSistema",
         back_populates="usuario_actualiza",
-        foreign_keys=lambda: [ConfiguracionSistema.IdUsuarioActualiza],
+        foreign_keys=lambda: [ConfiguracionSistema.IdUsuarioActualiza], lazy=True
     )
     movimientos_materia_prima = db.relationship(
         "MovimientoMateriaPrima",
         back_populates="usuario",
-        foreign_keys=lambda: [MovimientoMateriaPrima.IdUsuario],
+        foreign_keys=lambda: [MovimientoMateriaPrima.IdUsuario], lazy=True
     )
     compras_materia_prima_registradas = db.relationship(
         "CompraMateriaPrima",
         back_populates="usuario_registro",
-        foreign_keys=lambda: [CompraMateriaPrima.IdUsuarioRegistro],
+        foreign_keys=lambda: [CompraMateriaPrima.IdUsuarioRegistro], lazy=True
     )
     recetas_registradas = db.relationship(
         "Receta",
         back_populates="usuario_registro",
-        foreign_keys=lambda: [Receta.IdUsuarioRegistro],
+        foreign_keys=lambda: [Receta.IdUsuarioRegistro], lazy=True
     )
     recetas_aprobadas = db.relationship(
         "Receta",
         back_populates="usuario_aprueba",
-        foreign_keys=lambda: [Receta.IdUsuarioAprueba],
+        foreign_keys=lambda: [Receta.IdUsuarioAprueba], lazy=True
     )
     solicitudes_realizadas = db.relationship(
         "SolicitudProduccion",
         back_populates="usuario_solicita",
-        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioSolicita],
+        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioSolicita], lazy=True
     )
     solicitudes_aprobadas = db.relationship(
         "SolicitudProduccion",
         back_populates="usuario_aprueba",
-        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioAprueba],
+        foreign_keys=lambda: [SolicitudProduccion.IdUsuarioAprueba], lazy=True
     )
     producciones_registradas = db.relationship(
         "Produccion",
         back_populates="usuario_registro",
-        foreign_keys=lambda: [Produccion.IdUsuarioRegistro],
+        foreign_keys=lambda: [Produccion.IdUsuarioRegistro], lazy=True
     )
     movimientos_producto_terminado = db.relationship(
         "MovimientoProductoTerminado",
         back_populates="usuario",
-        foreign_keys=lambda: [MovimientoProductoTerminado.IdUsuario],
+        foreign_keys=lambda: [MovimientoProductoTerminado.IdUsuario], lazy=True
     )
     ventas_registradas = db.relationship(
         "Venta",
         back_populates="usuario_registro",
-        foreign_keys=lambda: [Venta.IdUsuarioRegistro],
+        foreign_keys=lambda: [Venta.IdUsuarioRegistro], lazy=True
     )
     cortes_venta_diario_registrados = db.relationship(
         "CorteVentaDiario",
         back_populates="usuario_registro",
-        foreign_keys=lambda: [CorteVentaDiario.IdUsuarioRegistro],
+        foreign_keys=lambda: [CorteVentaDiario.IdUsuarioRegistro], lazy=True
     )
     alertas_destino = db.relationship(
         "AlertaSistema",
         back_populates="usuario_destino",
-        foreign_keys=lambda: [AlertaSistema.IdUsuarioDestino],
+        foreign_keys=lambda: [AlertaSistema.IdUsuarioDestino], lazy=True
     )
-    sesiones = db.relationship("SesionUsuario", back_populates="usuario")
+    sesiones = db.relationship("SesionUsuario", back_populates="usuario", lazy=True)
 
 
 class ConfiguracionSistema(BaseModel):
@@ -180,6 +259,7 @@ class ConfiguracionSistema(BaseModel):
         "Usuario",
         back_populates="configuraciones_actualizadas",
         foreign_keys=[IdUsuarioActualiza],
+        uselist=False,
     )
 
 
@@ -197,9 +277,9 @@ class Proveedor(BaseModel):
     )
     RFC = db.Column(db.String(13), nullable=False, unique=True)
 
-    materias_primas = db.relationship("MateriaPrima", back_populates="proveedor")
+    materias_primas = db.relationship("MateriaPrima", back_populates="proveedor", lazy=True)
     compras_materia_prima = db.relationship(
-        "CompraMateriaPrima", back_populates="proveedor"
+        "CompraMateriaPrima", back_populates="proveedor", lazy=True
     )
 
 
@@ -211,7 +291,7 @@ class UnidadMedida(BaseModel):
     Abreviatura = db.Column(db.String(20), nullable=False, unique=True)
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
 
-    materias_primas = db.relationship("MateriaPrima", back_populates="unidad_medida")
+    materias_primas = db.relationship("MateriaPrima", back_populates="unidad_medida", lazy=True)
 
 
 class MateriaPrima(BaseModel):
@@ -239,15 +319,15 @@ class MateriaPrima(BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
 
-    proveedor = db.relationship("Proveedor", back_populates="materias_primas")
-    unidad_medida = db.relationship("UnidadMedida", back_populates="materias_primas")
+    proveedor = db.relationship("Proveedor", back_populates="materias_primas", uselist=False)
+    unidad_medida = db.relationship("UnidadMedida", back_populates="materias_primas", uselist=False)
     movimientos = db.relationship(
-        "MovimientoMateriaPrima", back_populates="materia_prima"
+        "MovimientoMateriaPrima", back_populates="materia_prima", lazy=True
     )
     detalles_compra = db.relationship(
-        "CompraMateriaPrimaDetalle", back_populates="materia_prima"
+        "CompraMateriaPrimaDetalle", back_populates="materia_prima", lazy=True
     )
-    recetas_detalle = db.relationship("RecetaDetalle", back_populates="materia_prima")
+    recetas_detalle = db.relationship("RecetaDetalle", back_populates="materia_prima", lazy=True)
 
 
 class MovimientoMateriaPrima(BaseModel):
@@ -270,11 +350,11 @@ class MovimientoMateriaPrima(BaseModel):
     Motivo = db.Column(db.String(255))
     IdUsuario = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False)
 
-    materia_prima = db.relationship("MateriaPrima", back_populates="movimientos")
+    materia_prima = db.relationship("MateriaPrima", back_populates="movimientos", uselist=False)
     usuario = db.relationship(
         "Usuario",
         back_populates="movimientos_materia_prima",
-        foreign_keys=[IdUsuario],
+        foreign_keys=[IdUsuario], uselist=False
     )
 
 
@@ -286,21 +366,26 @@ class CompraMateriaPrima(BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
     IdProveedor = db.Column(db.Integer, db.ForeignKey("Proveedor.IdProveedor"))
-    TotalCompra = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
     Observaciones = db.Column(db.String(255))
     IdUsuarioRegistro = db.Column(
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
     )
 
-    proveedor = db.relationship("Proveedor", back_populates="compras_materia_prima")
+    proveedor = db.relationship("Proveedor", back_populates="compras_materia_prima", uselist=False)
     usuario_registro = db.relationship(
         "Usuario",
         back_populates="compras_materia_prima_registradas",
-        foreign_keys=[IdUsuarioRegistro],
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
-    detalles = db.relationship("CompraMateriaPrimaDetalle", back_populates="compra")
+    detalles = db.relationship("CompraMateriaPrimaDetalle", back_populates="compra", lazy=True)
+
+    @property
+    def TotalCompra(self):
+        total = sum(
+            (_decimal_modelo(detalle.Cantidad) * _decimal_modelo(detalle.CostoUnitario))
+            for detalle in self.detalles
+        )
+        return total.quantize(Decimal("0.01"))
 
 
 class CompraMateriaPrimaDetalle(BaseModel):
@@ -319,10 +404,15 @@ class CompraMateriaPrimaDetalle(BaseModel):
     )
     Cantidad = db.Column(db.Numeric(18, 2), nullable=False)
     CostoUnitario = db.Column(db.Numeric(18, 2), nullable=False)
-    Subtotal = db.Column(db.Numeric(18, 2), nullable=False)
 
-    compra = db.relationship("CompraMateriaPrima", back_populates="detalles")
-    materia_prima = db.relationship("MateriaPrima", back_populates="detalles_compra")
+    compra = db.relationship("CompraMateriaPrima", back_populates="detalles", uselist=False)
+    materia_prima = db.relationship("MateriaPrima", back_populates="detalles_compra", uselist=False)
+
+    @property
+    def Subtotal(self):
+        return (_decimal_modelo(self.Cantidad) * _decimal_modelo(self.CostoUnitario)).quantize(
+            Decimal("0.01")
+        )
 
 
 class ProductoTerminado(BaseModel):
@@ -335,9 +425,6 @@ class ProductoTerminado(BaseModel):
     PrecioVenta = db.Column(
         db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
     )
-    CostoProduccion = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
     StockActual = db.Column(db.Integer, nullable=False, server_default=sql_text("0"))
     StockMinimo = db.Column(db.Integer, nullable=False, server_default=sql_text("0"))
     Activo = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
@@ -347,13 +434,35 @@ class ProductoTerminado(BaseModel):
 
     receta = db.relationship("Receta", back_populates="producto_terminado", uselist=False)
     solicitudes_produccion = db.relationship(
-        "SolicitudProduccion", back_populates="producto_terminado"
+        "SolicitudProduccion", back_populates="producto_terminado", lazy=True
     )
-    producciones = db.relationship("Produccion", back_populates="producto_terminado")
+    producciones = db.relationship("Produccion", back_populates="producto_terminado", lazy=True)
     movimientos = db.relationship(
-        "MovimientoProductoTerminado", back_populates="producto_terminado"
+        "MovimientoProductoTerminado", back_populates="producto_terminado", lazy=True
     )
-    ventas_detalle = db.relationship("VentaDetalle", back_populates="producto_terminado")
+    ventas_detalle = db.relationship("VentaDetalle", back_populates="producto_terminado", lazy=True)
+
+    @property
+    def CostoProduccion(self):
+        receta = self.receta
+        if receta is None:
+            return Decimal("0.00")
+
+        total = Decimal("0.00")
+        for detalle in receta.detalles:
+            precio_unitario = _costo_unitario_materia(detalle.materia_prima)
+            consumo_total = _decimal_modelo(detalle.CantidadRequerida) + _decimal_modelo(detalle.Merma)
+            total += consumo_total * precio_unitario
+
+        return total.quantize(Decimal("0.01"))
+    
+    @property
+    def UtilidadPorPieza(self):
+        return (_decimal_modelo(self.PrecioVenta) - self.CostoProduccion).quantize(Decimal("0.01"))
+
+    @property
+    def TotalDefectuosos(self):
+        return sum((p.CantidadDefectuosa for p in self.producciones), 0)
 
 
 class Receta(BaseModel):
@@ -364,7 +473,6 @@ class Receta(BaseModel):
         db.ForeignKey("ProductoTerminado.IdProductoTerminado"),
         primary_key=True,
     )
-    Merma = db.Column(db.Numeric(18, 2), nullable=False, server_default=sql_text("0"))
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
@@ -385,14 +493,14 @@ class Receta(BaseModel):
     usuario_registro = db.relationship(
         "Usuario",
         back_populates="recetas_registradas",
-        foreign_keys=[IdUsuarioRegistro],
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
     usuario_aprueba = db.relationship(
         "Usuario",
         back_populates="recetas_aprobadas",
-        foreign_keys=[IdUsuarioAprueba],
+        foreign_keys=[IdUsuarioAprueba], uselist=False,
     )
-    detalles = db.relationship("RecetaDetalle", back_populates="receta")
+    detalles = db.relationship("RecetaDetalle", back_populates="receta", lazy=True)
 
 
 class RecetaDetalle(BaseModel):
@@ -414,9 +522,10 @@ class RecetaDetalle(BaseModel):
         db.Integer, db.ForeignKey("MateriaPrima.IdMateriaPrima"), nullable=False
     )
     CantidadRequerida = db.Column(db.Numeric(18, 2), nullable=False)
+    Merma = db.Column(db.Numeric(18, 2), nullable=False, server_default=sql_text("0"))
 
-    receta = db.relationship("Receta", back_populates="detalles")
-    materia_prima = db.relationship("MateriaPrima", back_populates="recetas_detalle")
+    receta = db.relationship("Receta", back_populates="detalles", uselist=False)
+    materia_prima = db.relationship("MateriaPrima", back_populates="recetas_detalle", uselist=False)
 
 
 class SolicitudProduccion(BaseModel):
@@ -440,19 +549,19 @@ class SolicitudProduccion(BaseModel):
     ObservacionesAprobacion = db.Column(db.String(255))
 
     producto_terminado = db.relationship(
-        "ProductoTerminado", back_populates="solicitudes_produccion"
+        "ProductoTerminado", back_populates="solicitudes_produccion", uselist=False
     )
     usuario_solicita = db.relationship(
         "Usuario",
         back_populates="solicitudes_realizadas",
-        foreign_keys=[IdUsuarioSolicita],
+        foreign_keys=[IdUsuarioSolicita], uselist=False,
     )
     usuario_aprueba = db.relationship(
         "Usuario",
         back_populates="solicitudes_aprobadas",
-        foreign_keys=[IdUsuarioAprueba],
+        foreign_keys=[IdUsuarioAprueba], uselist=False,
     )
-    producciones = db.relationship("Produccion", back_populates="solicitud_produccion")
+    producciones = db.relationship("Produccion", back_populates="solicitud_produccion", lazy=True)
 
 
 class Produccion(BaseModel):
@@ -480,17 +589,17 @@ class Produccion(BaseModel):
     )
 
     solicitud_produccion = db.relationship(
-        "SolicitudProduccion", back_populates="producciones"
+        "SolicitudProduccion", back_populates="producciones", uselist=False
     )
     producto_terminado = db.relationship(
-        "ProductoTerminado", back_populates="producciones"
+        "ProductoTerminado", back_populates="producciones", uselist=False
     )
     usuario_registro = db.relationship(
         "Usuario",
         back_populates="producciones_registradas",
-        foreign_keys=[IdUsuarioRegistro],
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
-    defectos = db.relationship("ProduccionDefectuosa", back_populates="produccion")
+    defectos = db.relationship("ProduccionDefectuosa", back_populates="produccion", lazy=True)
 
 
 class ProduccionDefectuosa(BaseModel):
@@ -508,7 +617,7 @@ class ProduccionDefectuosa(BaseModel):
     )
     Descripcion = db.Column(db.String(255))
 
-    produccion = db.relationship("Produccion", back_populates="defectos")
+    produccion = db.relationship("Produccion", back_populates="defectos", uselist=False)
 
 
 class MovimientoProductoTerminado(BaseModel):
@@ -532,12 +641,12 @@ class MovimientoProductoTerminado(BaseModel):
     IdUsuario = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False)
 
     producto_terminado = db.relationship(
-        "ProductoTerminado", back_populates="movimientos"
+        "ProductoTerminado", back_populates="movimientos", uselist=False
     )
     usuario = db.relationship(
         "Usuario",
         back_populates="movimientos_producto_terminado",
-        foreign_keys=[IdUsuario],
+        foreign_keys=[IdUsuario], uselist=False,
     )
 
 
@@ -549,20 +658,25 @@ class Venta(BaseModel):
     FechaVenta = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
-    TotalVenta = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
+    MetodoPago = db.Column(
+        db.String(20), nullable=False, server_default=sql_text("'EFECTIVO'")
     )
     IdUsuarioRegistro = db.Column(
         db.Integer, db.ForeignKey("Usuario.IdUsuario"), nullable=False
     )
 
-    cliente = db.relationship("Cliente", back_populates="ventas")
+    cliente = db.relationship("Cliente", back_populates="ventas", uselist=False)
     usuario_registro = db.relationship(
         "Usuario",
         back_populates="ventas_registradas",
-        foreign_keys=[IdUsuarioRegistro],
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
-    detalles = db.relationship("VentaDetalle", back_populates="venta")
+    detalles = db.relationship("VentaDetalle", back_populates="venta", lazy=True)
+
+    @property
+    def TotalVenta(self):
+        total = sum((_decimal_modelo(detalle.Subtotal) for detalle in self.detalles), Decimal("0.00"))
+        return total.quantize(Decimal("0.01"))
 
 
 class VentaDetalle(BaseModel):
@@ -575,12 +689,17 @@ class VentaDetalle(BaseModel):
     )
     Cantidad = db.Column(db.Integer, nullable=False)
     PrecioUnitario = db.Column(db.Numeric(18, 2), nullable=False)
-    Subtotal = db.Column(db.Numeric(18, 2), nullable=False)
 
-    venta = db.relationship("Venta", back_populates="detalles")
+    venta = db.relationship("Venta", back_populates="detalles", uselist=False)
     producto_terminado = db.relationship(
-        "ProductoTerminado", back_populates="ventas_detalle"
+        "ProductoTerminado", back_populates="ventas_detalle", uselist=False
     )
+
+    @property
+    def Subtotal(self):
+        return (_decimal_modelo(self.Cantidad) * _decimal_modelo(self.PrecioUnitario)).quantize(
+            Decimal("0.01")
+        )
 
 
 class CorteVentaDiario(BaseModel):
@@ -588,15 +707,6 @@ class CorteVentaDiario(BaseModel):
 
     IdCorteVentaDiario = db.Column(db.Integer, primary_key=True, autoincrement=True)
     FechaCorte = db.Column(db.Date, nullable=False, unique=True)
-    TotalVentas = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
-    TotalCosto = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
-    UtilidadDiaria = db.Column(
-        db.Numeric(18, 2), nullable=False, server_default=sql_text("0")
-    )
     FechaRegistro = db.Column(
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
@@ -607,8 +717,31 @@ class CorteVentaDiario(BaseModel):
     usuario_registro = db.relationship(
         "Usuario",
         back_populates="cortes_venta_diario_registrados",
-        foreign_keys=[IdUsuarioRegistro],
+        foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
+
+    @property
+    def TotalVentas(self):
+        total = Decimal("0.00")
+        for venta in Venta.query.filter(db.func.date(Venta.FechaVenta) == self.FechaCorte).all():
+            total += venta.TotalVenta
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def TotalCosto(self):
+        total = Decimal("0.00")
+        ventas = Venta.query.filter(db.func.date(Venta.FechaVenta) == self.FechaCorte).all()
+        for venta in ventas:
+            for detalle in venta.detalles:
+                costo_unitario = (
+                    detalle.producto_terminado.CostoProduccion if detalle.producto_terminado else Decimal("0.00")
+                )
+                total += _decimal_modelo(detalle.Cantidad) * _decimal_modelo(costo_unitario)
+        return total.quantize(Decimal("0.01"))
+
+    @property
+    def UtilidadDiaria(self):
+        return (self.TotalVentas - self.TotalCosto).quantize(Decimal("0.01"))
 
 
 class AlertaSistema(BaseModel):
@@ -628,7 +761,7 @@ class AlertaSistema(BaseModel):
     usuario_destino = db.relationship(
         "Usuario",
         back_populates="alertas_destino",
-        foreign_keys=[IdUsuarioDestino],
+        foreign_keys=[IdUsuarioDestino], uselist=False,
     )
 
 
@@ -647,4 +780,4 @@ class SesionUsuario(BaseModel):
     Activa = db.Column(db.Boolean, nullable=False, server_default=sql_text("1"))
     MotivoCierre = db.Column(db.String(100))
 
-    usuario = db.relationship("Usuario", back_populates="sesiones")
+    usuario = db.relationship("Usuario", back_populates="sesiones", uselist=False)
