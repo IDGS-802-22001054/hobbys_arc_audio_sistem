@@ -55,6 +55,26 @@ def _datos_direccion_form(form):
         'codigo_postal': (form.codigo_postal.data or '').strip() or None,
     }
 
+
+def _roles_activos():
+    return db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
+
+
+def _puestos_desde_roles(roles):
+    puestos = []
+    for rol in roles:
+        nombre = (rol.Nombre or '').strip()
+        nombre_normalizado = nombre.lower()
+        if (
+            not nombre
+            or 'usuario' in nombre_normalizado
+            or 'consulta' in nombre_normalizado
+            or 'cliente' in nombre_normalizado
+        ):
+            continue
+        puestos.append(nombre)
+    return puestos
+
 @empleados_bp.route('/empleados', methods=['GET'])
 def empleados():
     q = request.args.get('q', '').strip()
@@ -83,10 +103,25 @@ def empleados():
 @empleados_bp.route('/empleados/nuevo', methods=['GET', 'POST'])
 def nuevo_empleado():
     form = forms.EmpleadoForm(request.form)
+    roles = _roles_activos()
+    puestos = _puestos_desde_roles(roles)
  
     if request.method == 'POST':
         foto_b64 = foto_a_base64(request.files.get('foto'))
         direccion = _datos_direccion_form(form)
+        correo = (form.correo.data or '').strip()
+
+        correo_existente = db.session.query(Persona.IdPersona).filter(
+            db.func.lower(Persona.CorreoElectronico) == correo.lower()
+        ).first()
+        if correo_existente:
+            flash('El correo ya está registrado. Use uno diferente.')
+            return render_template(
+                'empleado/registrar.html',
+                form=form,
+                roles=roles,
+                puestos=puestos,
+            )
  
         password_hash = None
         if form.identificador.data:
@@ -101,7 +136,7 @@ def nuevo_empleado():
                 'nombre': form.nombre.data,
                 'apellidos': form.apellidos.data,
                 'telefono': form.telefono.data,
-                'correo': form.correo.data,
+                'correo': correo,
                 'foto': foto_b64,
                 'puesto': form.puesto.data,
                 'fecha_ingreso': datetime.now(),
@@ -115,9 +150,8 @@ def nuevo_empleado():
         db.session.commit()
         flash('Empleado registrado correctamente.')
         return redirect(url_for('empleados.empleados'))
- 
-    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
-    return render_template('empleado/registrar.html', form=form, roles=roles)
+
+    return render_template('empleado/registrar.html', form=form, roles=roles, puestos=puestos)
 
 
 @empleados_bp.route('/empleados/ver/<int:id>', methods=['GET'])
@@ -195,7 +229,7 @@ def editar_empleado(id):
         flash('Empleado actualizado correctamente.')
         return redirect(url_for('empleados.empleados'))
  
-    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
+    roles = _roles_activos()
     return render_template('empleado/editar.html', form=form, roles=roles, id=id)
 
 
