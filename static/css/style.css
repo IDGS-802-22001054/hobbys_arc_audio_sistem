@@ -126,6 +126,8 @@ textarea {
 .sidebar {
     width: var(--sidebar-w);
     min-height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     background: var(--dark);
     border-right: 1px solid var(--border);
     display: flex;
@@ -135,7 +137,7 @@ textarea {
     top: 0;
     left: 0;
     z-index: 100;
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
     transition: transform var(--t);
 }
@@ -168,8 +170,10 @@ textarea {
 
 .sidebar-nav {
     flex: 1;
+    min-height: 0;
     padding: 10px 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .nav-section {
@@ -230,6 +234,7 @@ textarea {
     font-weight: 700;
     transition: all var(--t);
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .btn-logout i {
@@ -248,6 +253,7 @@ textarea {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    min-width: 0;
     transition: margin-left var(--t);
 }
 
@@ -355,6 +361,7 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    min-width: 0;
 }
 
 .flash-container {
@@ -472,18 +479,23 @@ textarea {
     font-weight: normal;
     font-size: 28px;
     letter-spacing: -1px;
-    margin-right: 40%;
+    margin-right: 0;
     color: #7A8099;
+    flex: 1 1 280px;
+    min-width: 0;
 }
 
 .page-header-actions {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
 }
 
 .search-wrap {
     position: relative;
+    width: 100%;
 }
 
 .search-wrap i {
@@ -525,6 +537,9 @@ textarea {
     border: 1px solid var(--border);
     border-radius: 10px;
     margin-top: 25px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     border-top: 3px solid var(--blue);
@@ -532,7 +547,7 @@ textarea {
 
 .data-table {
     width: 100%;
-    min-width: 100%;
+    min-width: 1100px;
     border-collapse: collapse;
     table-layout: auto;
 }
@@ -785,6 +800,7 @@ textarea {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    flex-wrap: wrap;
 }
 
 .action-btn {
@@ -844,6 +860,35 @@ textarea {
 .empty-state p {
     font-size: 13px;
     font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    .page-header form {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .page-header-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header-title {
+        flex-basis: 100%;
+        font-size: 24px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
 }
 
 /* Diseño de los formularios del módulo de empleados */
@@ -1743,7 +1788,9 @@ select:focus {
 
 @media (max-width: 640px) {
     .sidebar {
+        width: min(220px, 86vw);
         transform: translateX(calc(-1 * var(--sidebar-w)));
+        box-shadow: 12px 0 32px rgba(0, 0, 0, 0.35);
     }
 
     .main-wrapper {
