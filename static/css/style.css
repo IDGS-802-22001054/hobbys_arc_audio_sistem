@@ -2746,3 +2746,7 @@ select:focus {
 #tab-anterior:checked~#panel-anterior {
     display: flex;
 }
+
+.flash-message {
+    animation: flashFadeOut 5s forwards;
+}

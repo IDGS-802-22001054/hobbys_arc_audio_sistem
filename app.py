@@ -1,10 +1,11 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for, request
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user,  logout_user
 from config import DevelopmentConfig
 from models import db, Usuario
 from sqlalchemy import text
+from extensions import mail
 
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.compras import compras_bp
@@ -83,12 +84,33 @@ def crear_app():
     aplicacion = Flask(__name__)
     aplicacion.config.from_object(DevelopmentConfig)
 
+    aplicacion.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    aplicacion.config['MAIL_PORT'] = 587
+    aplicacion.config['MAIL_USE_TLS'] = True
+    aplicacion.config['MAIL_USERNAME'] = 'dannabr564@gmail.com'
+    aplicacion.config['MAIL_PASSWORD'] = 'pxtozmsewsbblrzu'
+    aplicacion.config['MAIL_DEFAULT_SENDER'] = ('Hobbys Car Audio', 'dannabr564@gmail.com')
+
     db.init_app(aplicacion)
+    mail.init_app(aplicacion)
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
     login_manager.init_app(aplicacion)
 
-    login_manager.init_app(aplicacion)
+    @aplicacion.before_request
+    def verificar_cambio_credenciales():
+        rutas_libres = {
+            'auth.login',
+            'auth.logout',
+            'empleados.cambiar_credenciales',
+            'static',
+        }
+        if (
+            current_user.is_authenticated
+            and getattr(current_user, 'DebeCambiarCredenciales', False)
+            and request.endpoint not in rutas_libres
+        ):
+            return redirect(url_for('empleados.cambiar_credenciales'))
 
     inicializar_base_datos(aplicacion)
     registrar_blueprints(aplicacion)
@@ -97,9 +119,14 @@ def crear_app():
 
     return aplicacion
 
+    @app.after_request
+    def no_cache(response):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 app = crear_app()
-
 
 if __name__ == "__main__":
     app.run(debug=app.config.get("DEBUG", True))

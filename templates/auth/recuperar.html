@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hobbys Car Audio – Recuperar contraseña</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/recuperar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/recuperar_nueva.css') }}">
+
+</head>
+
+<body>
+    <div class="login-page">
+        <div class="login-bg">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
+            </div>
+            <div class="topbar"></div>
+
+            <a class="back-link" href="{{ url_for('auth.login') }}">← Volver al inicio de sesión</a>
+
+            <div class="step-label">Paso 1 de 2</div>
+            <div class="login-title">RECUPERAR CONTRASEÑA</div>
+            <div class="login-desc">Ingresa tu usuario o correo electrónico y te enviaremos un código de verificación.
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('auth.recuperar_paso1') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label>Usuario o correo electrónico</label>
+                    <input class="form-input" type="text" name="identificador"
+                        placeholder="Ej. juan.perez o juan@email.com" autocomplete="username" required>
+                </div>
+                <button type="submit" class="btn-primary">ENVIAR CÓDIGO</button>
+            </form>
+        </div>
+    </div>
+
+    {% if mostrar_modal %}
+    <div class="modal-overlay active">
+        <div class="modal-box">
+            <div class="modal-icon">📧</div>
+            <div class="modal-title">Verifica tu identidad</div>
+            <div class="modal-sub">
+                Enviamos un código de 6 dígitos a<br>
+                <strong>{{ correo_enmascarado }}</strong>.<br>
+                Ingresa el código para continuar.
+            </div>
+
+            <form action="{{ url_for('auth.recuperar_verificar') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="codigo_verificacion"
+                    class="otp-input {% if error_codigo %}input-error{% endif %}" inputmode="numeric" maxlength="6"
+                    placeholder="000000" autocomplete="one-time-code" autofocus required>
+                {% if error_codigo %}
+                <p class="error-msg">Código incorrecto. Intenta de nuevo.</p>
+                {% endif %}
+                <button type="submit" class="btn-verify">VERIFICAR CÓDIGO</button>
+            </form>
+
+            <div class="resend-form">
+                <p class="resend-note">¿No llegó el código?</p>
+                <form action="{{ url_for('auth.recuperar_reenviar') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-resend">Reenviar código</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</body>
+
+</html>

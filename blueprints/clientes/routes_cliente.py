@@ -1,29 +1,26 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
-from datetime import datetime
-from models import db, Usuario, SesionUsuario, Cliente, Rol
+from datetime import datetime, timedelta
+from models import db, Usuario, SesionUsuario, Cliente, Rol, Persona
 from forms import LoginForm, ClienteForm
-
-import forms, base64
+from flask_mail import Message
+from extensions import mail
+import forms, base64, random, string
 
 clientes_bp = Blueprint('clientes', __name__, url_prefix='/clientes')
 
-DESTINOS_POR_ROL = {
-    'cliente': 'catalogo.catalogo',
-}
-
 TAMANO_MAXIMO = 2 * 1024 * 1024
-
 FIRMAS = [
     (b'\xff\xd8\xff', 'jpeg'),
-    (b'\x89PNG\r\n\x1a\n',  'png'),
+    (b'\x89PNG\r\n\x1a\n', 'png'),
     (b'GIF87a', 'gif'),
     (b'GIF89a', 'gif'),
     (b'RIFF', 'webp'),
 ]
+
 
 def detectar_tipo(imagen_bytes):
     for firma, tipo in FIRMAS:
@@ -45,13 +42,11 @@ def foto_a_base64(archivo):
     encoded = base64.b64encode(imagen_bytes).decode('utf-8')
     return f'data:image/{tipo};base64,{encoded}'
 
-
 def obtener_rol_cliente_id():
     rol = db.session.query(Rol).filter(
         db.func.lower(Rol.Nombre) == 'cliente'
     ).first()
     return rol.IdRol if rol else None
-
 
 def _datos_direccion_form(form):
     return {
@@ -62,12 +57,205 @@ def _datos_direccion_form(form):
         'codigo_postal': (form.codigo_postal.data or '').strip() or None,
     }
 
+def _generar_codigo() -> str:
+    return ''.join(random.choices(string.digits, k=6))
+
+
+def _enviar_codigo_verificacion(correo: str, codigo: str, nombre: str):
+    try:
+        msg = Message(
+            subject='Código de verificación para inicio de sesión.',
+            recipients=[correo],
+            body=f"""Hola {nombre},
+            
+            {codigo}
+
+        Este código expira en 10 minutos. Si no solicitaste crear una cuenta, ignora este mensaje. \n\n"""
+        f"Si tienes problemas para acceder, comunícate con el administrador.\n\n"
+            f"Saludos,\n"
+            f"Equipo de administración"
+        )
+        
+        mail.send(msg)
+        return True
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f'Error al enviar código a {correo}: {e}')
+        return False
+
+@clientes_bp.route('/nuevo', methods=['GET', 'POST'])
+def nuevo_cliente():
+    form = forms.ClienteForm(request.form)
+
+    if request.method == 'POST' and request.form.get('action') == 'enviar_codigo':
+
+        identificador = request.form.get('identificador', '').strip()
+        password = request.form.get('password', '')
+        confirm = request.form.get('password_confirm', '')
+        nombre = request.form.get('nombre', '').strip()
+        correo = request.form.get('correo', '').strip()
+
+        if password != confirm:
+            flash('Las contraseñas no coinciden.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        if not identificador:
+            flash('El nombre de usuario es requerido.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        if len(password) < 8:
+            flash('La contraseña debe tener al menos 8 caracteres.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        correo_existe = db.session.execute(
+            text('SELECT COUNT(*) FROM Persona WHERE CorreoElectronico = :correo'),
+            {'correo': correo}
+        ).scalar()
+        if correo_existe:
+            flash('El correo electrónico ya está registrado.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        usuario_existe = db.session.execute(
+            text('SELECT COUNT(*) FROM Usuario WHERE Identificador = :id'),
+            {'id': identificador}
+        ).scalar()
+        if usuario_existe:
+            flash('El nombre de usuario ya está en uso.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        codigo = _generar_codigo()
+        session['verificacion'] = {
+            'codigo': codigo,
+            'expira': (datetime.now() + timedelta(minutes=10)).isoformat(),
+            'correo': correo,
+            'nombre': nombre,
+            'apellidos': request.form.get('apellidos', '').strip(),
+            'identificador': identificador,
+            'password_hash': generate_password_hash(password),
+        }
+
+        exito = _enviar_codigo_verificacion(correo, codigo, nombre)
+
+        if not exito:
+            flash('No se pudo enviar el correo de verificación. Intenta de nuevo.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        return render_template(
+            'cliente/registrar.html',
+            form=form,
+            mostrar_modal=True,
+            correo_enmascarado=_enmascarar_correo(correo)
+        )
+
+    if request.method == 'POST' and request.form.get('action') == 'verificar':
+
+        codigo_ingresado = request.form.get('codigo_verificacion', '').strip()
+        datos = session.get('verificacion')
+
+        if not datos:
+            flash('La sesión de verificación expiró. Intenta de nuevo.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        if datetime.now() > datetime.fromisoformat(datos['expira']):
+            session.pop('verificacion', None)
+            flash('El código expiró. Vuelve a intentarlo.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        if codigo_ingresado != datos['codigo']:
+            return render_template(
+                'cliente/registrar.html',
+                form=form,
+                mostrar_modal=True,
+                error_codigo=True,
+                correo_enmascarado=_enmascarar_correo(datos['correo'])
+            )
+
+        rol_cliente_id = obtener_rol_cliente_id()
+        if rol_cliente_id is None:
+            flash('No existe el rol Cliente. Contacta al administrador.', 'danger')
+            return render_template('cliente/registrar.html', form=form)
+
+        try:
+            db.session.execute(
+                text('CALL SP_Clientes_Registrar(:nombre, :apellidos, :correo, '
+                     ':identificador, :password_hash, :id_rol, '
+                     ':calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, @id_cliente)'),
+                {
+                    'nombre': datos['nombre'],
+                    'apellidos': datos['apellidos'],
+                    'correo': datos['correo'],
+                    'identificador': datos['identificador'],
+                    'password_hash': datos['password_hash'],
+                    'id_rol': rol_cliente_id,
+                    'calle': None,
+                    'colonia': None,
+                    'numero_exterior': None,
+                    'numero_interior': None,
+                    'codigo_postal': None,
+                }
+            )
+            db.session.commit()
+
+            session.pop('verificacion', None)  
+
+            usuario = db.session.query(Usuario).filter_by(
+                Identificador=datos['identificador']
+            ).first()
+
+            if usuario:
+                nueva_sesion = SesionUsuario(
+                    IdUsuario = usuario.IdUsuario,
+                    FechaInicio = datetime.now(),
+                    FechaUltimaActividad = datetime.now(),
+                    Activa = True
+                )
+                db.session.add(nueva_sesion)
+                db.session.commit()
+                login_user(usuario, remember=False)
+                flash('¡Cuenta creada y correo verificado! Bienvenido.', 'success')
+                return redirect(url_for('catalogo_cliente.catalogo'))
+
+        except OperationalError as e:
+            db.session.rollback()
+            mensaje = str(e.orig.args[1]) if e.orig else 'Error al registrar la cuenta.'
+            flash(mensaje, 'danger')
+
+    return render_template('cliente/registrar.html', form=form)
+
+
+def _enmascarar_correo(correo: str) -> str:
+    if '@' not in correo:
+        return correo
+    usuario, dominio = correo.split('@', 1)
+    if len(usuario) <= 2:
+        return correo
+    return usuario[:2] + '*' * (len(usuario) - 2) + '@' + dominio
+
+@clientes_bp.route('/reenviar-codigo', methods=['POST'])
+def reenviar_codigo():
+    from flask import jsonify
+    datos = session.get('verificacion')
+
+    if not datos:
+        return jsonify({'ok': False, 'mensaje': 'Sesión expirada. Vuelve a llenar el formulario.'})
+
+    nuevo_codigo = _generar_codigo()
+    datos['codigo'] = nuevo_codigo
+    datos['expira'] = (datetime.now() + timedelta(minutes=10)).isoformat()
+    session['verificacion'] = datos
+    session.modified = True
+
+    exito = _enviar_codigo_verificacion(datos['correo'], nuevo_codigo, datos['nombre'])
+
+    if exito:
+        return jsonify({'ok': True, 'mensaje': 'Código reenviado correctamente.'})
+    return jsonify({'ok': False, 'mensaje': 'No se pudo reenviar el correo. Intenta de nuevo.'})
+
 @clientes_bp.route('/clientes', methods=['GET'])
 def clientes():
     q = request.args.get('q', '').strip()
     resultado = db.session.execute(text('CALL SP_Clientes_Listar()'))
     lista = resultado.fetchall()
-
     if q:
         q_lower = q.lower()
         if q_lower in ('activo', 'activos'):
@@ -82,76 +270,7 @@ def clientes():
                      q_lower in (c.Telefono or '').lower() or
                      q_lower in (c.Identificador or '').lower() or
                      q_lower in str(c.IdCliente)]
-
     return render_template('cliente/clientes.html', clientes=lista, q=q)
-
-@clientes_bp.route('/nuevo', methods=['GET', 'POST'])
-def nuevo_cliente():
-    form = forms.ClienteForm(request.form)
-
-    if request.method == 'POST':
-        identificador = request.form.get('identificador', '').strip()
-        password = request.form.get('password', '')
-        confirm = request.form.get('password_confirm', '')
-
-        if password != confirm:
-            flash('Las contraseñas no coinciden.', 'danger')
-            return render_template('cliente/registrar.html', form=form)
-
-        if not identificador:
-            flash('El nombre de usuario es requerido.', 'danger')
-            return render_template('cliente/registrar.html', form=form)
-
-        rol_cliente_id = obtener_rol_cliente_id()
-        if rol_cliente_id is None:
-            flash('No existe el rol Cliente en la tabla Rol.', 'danger')
-            return render_template('cliente/registrar.html', form=form)
-
-        password_hash  = generate_password_hash(password)
-
-        try:
-            direccion = _datos_direccion_form(form)
-            db.session.execute(
-                text('CALL SP_Clientes_Registrar(:nombre, :apellidos, :correo, '
-                     ':identificador, :password_hash, :id_rol, '
-                     ':calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, @id_cliente)'),
-                {
-                    'nombre': form.nombre.data,
-                    'apellidos': form.apellidos.data,
-                    'correo': form.correo.data,
-                    'identificador': identificador,
-                    'password_hash': password_hash,
-                    'id_rol':        rol_cliente_id,
-                    **direccion,
-                }
-            )
-            db.session.commit()
-
-            usuario = db.session.query(Usuario).filter_by(
-                Identificador=identificador
-            ).first()
-
-            if usuario:
-                usuario.FechaUltimoAcceso = datetime.now()
-                nueva_sesion = SesionUsuario(
-                    IdUsuario = usuario.IdUsuario,
-                    FechaInicio = datetime.now(),
-                    FechaUltimaActividad = datetime.now(),
-                    Activa = True
-                )
-                db.session.add(nueva_sesion)
-                db.session.commit()
-                login_user(usuario, remember=False)
-                rol = usuario.rol.Nombre.lower().strip()
-                flash('Cuenta creada correctamente. ¡Bienvenido!', 'success')
-                return redirect(url_for('catalogo_cliente.catalogo'))
-
-        except OperationalError as e:
-            db.session.rollback()
-            mensaje = str(e.orig.args[1]) if e.orig else 'Error al registrar la cuenta.'
-            flash(mensaje, 'danger')
-
-    return render_template('cliente/registrar.html', form=form)
 
 @clientes_bp.route('/ver/<int:id>', methods=['GET'])
 def ver_cliente(id):
@@ -167,18 +286,16 @@ def editar_cliente(id):
     fila = db.session.execute(
         text('CALL SP_Clientes_Ver(:id)'), {'id': id}
     ).fetchone()
-
     if fila is None:
-        from flask import abort
         abort(404)
 
     form = forms.ClienteForm(request.form)
 
     if request.method == 'GET':
-        form.nombre.data    = fila.Nombre
+        form.nombre.data = fila.Nombre
         form.apellidos.data = fila.Apellidos
-        form.correo.data    = fila.CorreoElectronico
-        form.telefono.data  = fila.Telefono
+        form.correo.data = fila.CorreoElectronico
+        form.telefono.data = fila.Telefono
         form.calle.data = fila.Calle
         form.colonia.data = fila.Colonia
         form.numero_exterior.data = fila.NumeroExterior
@@ -188,17 +305,16 @@ def editar_cliente(id):
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
         direccion = _datos_direccion_form(form)
-
         db.session.execute(
             text('CALL SP_Clientes_Editar(:id, :nombre, :apellidos, '
                  ':telefono, :correo, :calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, :foto)'),
             {
-                'id':        id,
-                'nombre':    form.nombre.data.strip(),
+                'id': id,
+                'nombre': form.nombre.data.strip(),
                 'apellidos': form.apellidos.data.strip(),
-                'telefono':  form.telefono.data,
-                'correo':    form.correo.data.strip(),
-                'foto':      nueva_foto,
+                'telefono': form.telefono.data,
+                'correo': form.correo.data.strip(),
+                'foto': nueva_foto,
                 **direccion,
             }
         )
@@ -244,7 +360,6 @@ def editar_perfil():
     cliente = db.session.query(Cliente).filter_by(
         IdPersona=current_user.IdPersona
     ).first_or_404()
-
     form = forms.ClientePerfilForm(request.form)
 
     if request.method == 'GET':
@@ -263,7 +378,6 @@ def editar_perfil():
     if request.method == 'POST':
         nueva_foto = foto_a_base64(request.files.get('foto'))
         direccion = _datos_direccion_form(form)
-
         password_hash = None
         if form.password.data:
             password_hash = generate_password_hash(form.password.data)
@@ -276,7 +390,7 @@ def editar_perfil():
                 'id_cliente': cliente.IdCliente,
                 'nombre': form.nombre.data.strip(),
                 'apellidos': form.apellidos.data.strip(),
-                'telefono':form.telefono.data,
+                'telefono': form.telefono.data,
                 'correo': form.correo.data.strip(),
                 'foto': nueva_foto,
                 'identificador': form.identificador.data.strip(),
@@ -286,6 +400,6 @@ def editar_perfil():
         )
         db.session.commit()
         flash('Perfil actualizado correctamente.')
-        return redirect(url_for('catalogo_cliente.catalogo')) 
+        return redirect(url_for('catalogo_cliente.catalogo'))
 
     return render_template('cliente/editarPerfil.html', form=form)

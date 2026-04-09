@@ -162,6 +162,9 @@ class Usuario(UserMixin, BaseModel):
         db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
     )
     FechaUltimoAcceso = db.Column(db.DateTime)
+    DebeCambiarCredenciales = db.Column(
+        db.Boolean, nullable=False, server_default=sql_text("0")
+    )
 
     def get_id(self):
         return str(self.IdUsuario)

@@ -1,0 +1,66 @@
+.step-label {
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: .4rem;
+}
+
+.correo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    color: #0369a1;
+    border-radius: 8px;
+    padding: .42rem .85rem;
+    font-size: .84rem;
+    font-weight: 700;
+    margin-bottom: 1.4rem;
+    width: fit-content;
+}
+
+.correo-badge.badge-empleado {
+    background: #fefce8;
+    border-color: #fde047;
+    color: #854d0e;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .82rem;
+    color: #64748b;
+    text-decoration: none;
+    margin-bottom: 1.2rem;
+    transition: color .2s;
+}
+
+.back-link:hover {
+    color: #3b5bdb;
+}
+
+.flash-message {
+    animation: flashFadeOut 5s forwards;
+}
+
+@keyframes flashFadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+}

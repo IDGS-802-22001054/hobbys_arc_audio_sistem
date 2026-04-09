@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/verificacion.css') }}">
 </head>
 
 <body>
@@ -16,15 +17,23 @@
         <div class="reg-wrap">
             <div class="reg-card">
                 <div class="reg-card-inner">
-                        <div class="login-logo">
-                            <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
-                        </div>
-                        <div class="topbar"></div>
-                        <div class="login-title">CREAR CUENTA</div>
-                        <div class="login-desc">Ingresa tus datos personales para continuar.</div>
+
+                    <div class="login-logo">
+                        <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
+                    </div>
+                    <div class="topbar"></div>
+                    <div class="login-title">CREAR CUENTA</div>
+                    <div class="login-desc">Ingresa tus datos personales para continuar.</div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% for category, message in messages %}
+                    <div class="flash-inline {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                    {% endwith %}
 
                     <form method="POST" action="{{ url_for('clientes.nuevo_cliente') }}" novalidate>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="enviar_codigo">
 
                         <div class="sec-label">
                             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
@@ -41,17 +50,18 @@
                             <div class="fg">
                                 <label for="nombre">Nombre(s):</label>
                                 <input class="fi" type="text" id="nombre" name="nombre" placeholder="Ingrese su nombre"
-                                    autocomplete="given-name" required>
+                                    value="{{ request.form.get('nombre', '') }}" autocomplete="given-name" required>
                             </div>
                             <div class="fg">
                                 <label for="apellidos">Apellidos:</label>
                                 <input class="fi" type="text" id="apellidos" name="apellidos"
-                                    placeholder="Ingrese sus apellidos" autocomplete="family-name" required>
+                                    placeholder="Ingrese sus apellidos" value="{{ request.form.get('apellidos', '') }}"
+                                    autocomplete="family-name" required>
                             </div>
                         </div>
 
                         <div class="fg">
-                            <label for="correo">Correo electrónico: </label>
+                            <label for="correo">Correo electrónico:</label>
                             <div class="input-icon-wrap">
                                 <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke-width="2"
                                     stroke-linecap="round" stroke-linejoin="round">
@@ -60,7 +70,8 @@
                                     <polyline points="22,6 12,13 2,6" />
                                 </svg>
                                 <input class="fi fi-icon" type="email" id="correo" name="correo"
-                                    placeholder="Ingrese un correo válido" autocomplete="email" required>
+                                    placeholder="Ingrese un correo válido" value="{{ request.form.get('correo', '') }}"
+                                    autocomplete="email" required>
                             </div>
                         </div>
 
@@ -73,25 +84,25 @@
                                     <circle cx="12" cy="7" r="4" />
                                 </svg>
                                 <input class="fi fi-icon" type="text" id="identificador" name="identificador"
-                                    placeholder="Ingrese un nombre de usuario" autocomplete="username" required>
+                                    placeholder="Ingrese un nombre de usuario"
+                                    value="{{ request.form.get('identificador', '') }}" autocomplete="username"
+                                    required>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="fg">
-                                <label for="pass-reg1">Contraseña: </label>
+                                <label for="pass-reg1">Contraseña:</label>
                                 <div class="pass-wrap">
                                     <input class="fi" type="password" id="pass-reg1" name="password"
                                         placeholder="••••••••" autocomplete="new-password" required>
                                     <input type="checkbox" id="eye-reg1" class="eye-toggle">
                                     <label for="eye-reg1" class="eye-btn" aria-label="Mostrar contraseña">
-                                        <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
+                                        <svg class="eye-show" viewBox="0 0 24 24">
                                             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
                                             <circle cx="12" cy="12" r="3" />
                                         </svg>
-                                        <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
+                                        <svg class="eye-hide" viewBox="0 0 24 24">
                                             <path
                                                 d="M17.94 17.94A10.94 10.94 0 0112 19C5 19 1 12 1 12a18.1 18.1 0 015.06-5.94M9.9 4.24A10.33 10.33 0 0112 4c7 0 11 8 11 8a18.1 18.1 0 01-2.16 3.19M1 1l22 22" />
                                         </svg>
@@ -99,19 +110,17 @@
                                 </div>
                             </div>
                             <div class="fg">
-                                <label for="pass-reg2">Confirmar contraseña: </label>
+                                <label for="pass-reg2">Confirmar contraseña:</label>
                                 <div class="pass-wrap">
                                     <input class="fi" type="password" id="pass-reg2" name="password_confirm"
                                         placeholder="••••••••" autocomplete="new-password" required>
                                     <input type="checkbox" id="eye-reg2" class="eye-toggle">
                                     <label for="eye-reg2" class="eye-btn" aria-label="Mostrar contraseña">
-                                        <svg class="eye-show" viewBox="0 0 24 24" fill="none" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
+                                        <svg class="eye-show" viewBox="0 0 24 24">
                                             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
                                             <circle cx="12" cy="12" r="3" />
                                         </svg>
-                                        <svg class="eye-hide" viewBox="0 0 24 24" fill="none" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
+                                        <svg class="eye-hide" viewBox="0 0 24 24">
                                             <path
                                                 d="M17.94 17.94A10.94 10.94 0 0112 19C5 19 1 12 1 12a18.1 18.1 0 015.06-5.94M9.9 4.24A10.33 10.33 0 0112 4c7 0 11 8 11 8a18.1 18.1 0 01-2.16 3.19M1 1l22 22" />
                                         </svg>
@@ -122,22 +131,19 @@
 
                         <div class="hint-row">
                             <span class="hint-chip">
-                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
+                                <svg viewBox="0 0 24 24">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
                                 Mínimo 8 caracteres
                             </span>
                             <span class="hint-chip">
-                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
+                                <svg viewBox="0 0 24 24">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
                                 Al menos un número
                             </span>
                             <span class="hint-chip">
-                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
+                                <svg viewBox="0 0 24 24">
                                     <polyline points="20 6 9 17 4 12" />
                                 </svg>
                                 Una mayúscula
@@ -145,24 +151,71 @@
                         </div>
 
                         <div class="submit-area">
-                            <button type="submit" class="btn-submit">
-                                Crear Cuenta
-                            </button>
+                            <button type="submit" class="btn-submit">Crear Cuenta</button>
                             <a href="{{ url_for('auth.login') }}" class="back-link">
-                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
+                                <svg viewBox="0 0 24 24">
                                     <polyline points="15 18 9 12 15 6" />
                                 </svg>
                                 Volver al inicio de sesión
                             </a>
                         </div>
-
                     </form>
+
                 </div>
 
                 <div class="reg-footer">
-                    Al registrarte aceptas los términos de uso del sistema &nbsp;·&nbsp; Hobbys Car Audio &copy; 2026
+                    Al registrarte aceptas los términos de uso del sistema &nbsp;·&nbsp;
+                    Hobbys Car Audio &copy; 2026
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay {% if mostrar_modal %}active{% endif %}">
+        <div class="modal-box">
+
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                </svg>
+            </div>
+
+            <div class="modal-title">Verifica tu correo</div>
+            <div class="modal-desc">
+                Enviamos un código de 6 dígitos a<br>
+                <strong>{{ correo_enmascarado or '' }}</strong><br>
+                Ingrésalo para completar tu registro.
+            </div>
+
+            <form method="POST" action="{{ url_for('clientes.nuevo_cliente') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="verificar">
+
+                <input type="text" name="codigo_verificacion"
+                    class="code-single {% if error_codigo %}input-error{% endif %}" placeholder="_ _ _ _ _ _"
+                    maxlength="6" inputmode="numeric" autocomplete="one-time-code" autofocus required>
+
+                {% if error_codigo %}
+                <div class="modal-error-msg visible">
+                    Código incorrecto. Revisa tu correo e intenta de nuevo.
+                </div>
+                {% endif %}
+
+                <button type="submit" class="btn-verify">
+                    Verificar y crear cuenta
+                </button>
+            </form>
+
+            <div class="resend-area">
+                ¿No recibiste el código?
+                <form method="POST" action="{{ url_for('clientes.reenviar_codigo') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-resend">Reenviar código</button>
+                </form>
+                {% if reenvio_ok %}
+                <span class="resend-ok">✓ Código reenviado correctamente.</span>
+                {% endif %}
             </div>
 
         </div>
