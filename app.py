@@ -94,12 +94,28 @@ def registrar_context_processors(aplicacion):
 
         if es_autorizado:
             query = text("""
-                SELECT IdAlertaSistema, Mensaje, ReferenciaId
+                SELECT IdAlertaSistema, Mensaje, ReferenciaId, TipoAlerta
                 FROM alertasistema
                 WHERE Leida = 0 AND TipoAlerta = 'STOCK_BAJO'
                 ORDER BY FechaGeneracion DESC
             """)
-            alertas = db.session.execute(query).fetchall()
+            alertas = list(db.session.execute(query).fetchall())
+
+        if es_admin:
+            query_alertas_produccion = text("""
+                SELECT IdAlertaSistema, Mensaje, ReferenciaId, TipoAlerta
+                FROM alertasistema
+                WHERE Leida = 0
+                  AND TipoAlerta = 'MATERIAL_INSUFICIENTE'
+                  AND IdUsuarioDestino = :id_usuario
+                ORDER BY FechaGeneracion DESC
+            """)
+            alertas.extend(
+                db.session.execute(
+                    query_alertas_produccion,
+                    {'id_usuario': current_user.IdUsuario}
+                ).fetchall()
+            )
 
         if es_admin:
             query_solicitudes = text("""

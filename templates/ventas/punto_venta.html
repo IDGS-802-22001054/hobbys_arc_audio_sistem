@@ -35,14 +35,26 @@
                     <p>{{ producto.descripcion }}</p>
                 </div>
 
+                {% if producto.stock <= 0 %}
+                <form method="post" action="{{ url_for('ventas.solicitar_produccion') }}" class="sale-product-action">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="producto_id" value="{{ producto.id }}">
+                    <input type="hidden" name="cantidad" value="1">
+                    <input type="hidden" name="q" value="{{ busqueda or '' }}">
+                    <button type="submit" class="btn btn-yellow sale-add-btn">
+                        <i class="ph ph-factory"></i> Solicitar producción
+                    </button>
+                </form>
+                {% else %}
                 <form method="post" action="{{ url_for('ventas.agregar_al_carrito') }}" class="sale-product-action">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="producto_id" value="{{ producto.id }}">
                     <input type="hidden" name="q" value="{{ busqueda or '' }}">
-                    <button type="submit" class="btn btn-blue sale-add-btn" {% if producto.stock <= 0 %}disabled{% endif %}>
+                    <button type="submit" class="btn btn-blue sale-add-btn">
                         <i class="ph ph-plus-circle"></i> Agregar
                     </button>
                 </form>
+                {% endif %}
             </article>
             {% else %}
             <div class="empty-state">
