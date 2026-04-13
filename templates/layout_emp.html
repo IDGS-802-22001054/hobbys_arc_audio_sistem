@@ -155,10 +155,10 @@
 
                                 {% if alertas_criticas %}
                                 {% for a in alertas_criticas %}
-                                <a href="{{ url_for('materia_prima.leer_alerta', id_alerta=a.IdAlertaSistema) }}" class="notif-item"
+                                <a href="{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}{{ url_for('produccion.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% else %}{{ url_for('materia_prima.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% endif %}" class="notif-item"
                                     style="text-decoration: none; display: block;">
                                     <div class="notif-item-title">
-                                        <strong>Inventario</strong>
+                                        <strong>{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}Produccion{% else %}Inventario{% endif %}</strong>
                                         <span class="status-tag">REVISAR</span>
                                     </div>
                                     <p style="font-size: 11px; color: var(--text); line-height: 1.4;">{{ a.Mensaje }}</p>
