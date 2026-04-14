@@ -8,6 +8,7 @@
     
     <div class="header-tools">
         <form action="{{ url_for('proveedores.listar') }}" method="GET" class="search-container">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="text" name="search" placeholder="Buscar Proveedores" value="{{ search or '' }}">
             <button type="submit" style="background:none; border:none; cursor:pointer;">
                 <i class="ph ph-magnifying-glass"></i>

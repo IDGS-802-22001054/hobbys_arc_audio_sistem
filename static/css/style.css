@@ -126,6 +126,8 @@ textarea {
 .sidebar {
     width: var(--sidebar-w);
     min-height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     background: var(--dark);
     border-right: 1px solid var(--border);
     display: flex;
@@ -135,7 +137,7 @@ textarea {
     top: 0;
     left: 0;
     z-index: 100;
-    overflow-y: auto;
+    overflow-y: hidden;
     overflow-x: hidden;
     transition: transform var(--t);
 }
@@ -168,8 +170,10 @@ textarea {
 
 .sidebar-nav {
     flex: 1;
+    min-height: 0;
     padding: 10px 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .nav-section {
@@ -230,6 +234,7 @@ textarea {
     font-weight: 700;
     transition: all var(--t);
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .btn-logout i {
@@ -248,6 +253,7 @@ textarea {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    min-width: 0;
     transition: margin-left var(--t);
 }
 
@@ -355,6 +361,7 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 18px;
+    min-width: 0;
 }
 
 .flash-container {
@@ -472,18 +479,23 @@ textarea {
     font-weight: normal;
     font-size: 28px;
     letter-spacing: -1px;
-    margin-right: 40%;
+    margin-right: 0;
     color: #7A8099;
+    flex: 1 1 280px;
+    min-width: 0;
 }
 
 .page-header-actions {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
 }
 
 .search-wrap {
     position: relative;
+    width: 100%;
 }
 
 .search-wrap i {
@@ -525,6 +537,9 @@ textarea {
     border: 1px solid var(--border);
     border-radius: 10px;
     margin-top: 25px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
     border-top: 3px solid var(--blue);
@@ -532,7 +547,7 @@ textarea {
 
 .data-table {
     width: 100%;
-    min-width: 100%;
+    min-width: 1100px;
     border-collapse: collapse;
     table-layout: auto;
 }
@@ -785,6 +800,7 @@ textarea {
     align-items: center;
     justify-content: center;
     gap: 6px;
+    flex-wrap: wrap;
 }
 
 .action-btn {
@@ -844,6 +860,35 @@ textarea {
 .empty-state p {
     font-size: 13px;
     font-weight: 700;
+}
+
+@media (max-width: 900px) {
+    .page-header form {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .search-input {
+        width: 100%;
+    }
+
+    .page-header-actions {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .page-header-title {
+        flex-basis: 100%;
+        font-size: 24px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
 }
 
 /* Diseño de los formularios del módulo de empleados */
@@ -1043,8 +1088,9 @@ textarea {
     padding: 40px;
     max-width: 520px;
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    flex-direction: column;
     gap: 16px;
     text-align: center;
 }
@@ -1743,7 +1789,9 @@ select:focus {
 
 @media (max-width: 640px) {
     .sidebar {
+        width: min(220px, 86vw);
         transform: translateX(calc(-1 * var(--sidebar-w)));
+        box-shadow: 12px 0 32px rgba(0, 0, 0, 0.35);
     }
 
     .main-wrapper {
@@ -1944,20 +1992,6 @@ select:focus {
     .form-row-2 {
         grid-template-columns: 1fr;
     }
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: .75rem;
-    margin-bottom: 1.25rem;
-}
-
-.detail-card {
-    background: var(--card-bg, #fff);
-    border: 1px solid var(--border, #e5e7eb);
-    border-radius: 10px;
-    padding: .8rem 1rem;
 }
 
 .detail-card-lbl {
@@ -2713,7 +2747,6 @@ select:focus {
     }
 }
 
-/* ── Tabs top productos (radio trick, sin JS) ── */
 .top-tabs-wrap {
     display: flex;
     flex-direction: column;
@@ -2747,6 +2780,180 @@ select:focus {
     display: flex;
 }
 
-.flash-message {
-    animation: flashFadeOut 5s forwards;
+/* ── Confirm card mejorada ── */
+.confirm-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.confirm-card {
+    background: var(--card);
+    border: 1px solid rgba(215, 43, 43, 0.2);
+    border-top: 3px solid var(--red);
+    border-radius: var(--radius);
+    padding: 40px 36px;
+    max-width: 500px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    text-align: center;
+}
+
+.confirm-icon-wrap {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: rgba(215, 43, 43, 0.1);
+    border: 1px solid rgba(215, 43, 43, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.confirm-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.confirm-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 24px;
+    max-width: 360px;
+}
+
+.confirm-info {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+
+.confirm-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+}
+
+.confirm-info-row:last-child {
+    border-bottom: none;
+}
+
+.cir-key {
+    font-size: 10px;
+    font-weight: 900;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    flex-shrink: 0;
+}
+
+.cir-val {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text);
+    text-align: right;
+}
+
+.cir-val.mono {
+    font-family: 'Nunio', monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ── Password change card ── */
+.pw-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.pw-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--blue);
+    border-radius: var(--radius);
+    padding: 36px;
+    max-width: 480px;
+    width: 100%;
+}
+
+.pw-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 6px;
+}
+
+.pw-icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(26, 79, 196, 0.15);
+    border: 1px solid rgba(26, 79, 196, 0.3);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pw-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+
+.pw-subtitle {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.pw-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+}
+
+.alert-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(26, 79, 196, 0.1);
+    border: 1px solid rgba(26, 79, 196, 0.25);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #94b8ff;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.form-actions-full {
+    margin-top: 24px;
+}
+
+.form-actions-full .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 18px;
+    font-size: 13px;
 }

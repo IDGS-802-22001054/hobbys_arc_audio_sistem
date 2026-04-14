@@ -6,13 +6,13 @@
 
 <div class="page-header fade-up">
     <div class="page-header-left">
-        <a href="{{ url_for('produccion.index') }}" class="btn-back">
+        <a href="{{ url_for('produccion.produccion') }}" class="btn-back">
             <i class="ph ph-arrow-left"></i>
         </a>
         <div>
             <h2 class="page-title">Registrar defectos</h2>
             <p class="page-subtitle">
-                Producción <strong>#{{ prod.IdProduccion }}</strong> —
+                Produccion <strong>#{{ prod.IdProduccion }}</strong> -
                 {{ prod.NombreProducto }}
             </p>
         </div>
@@ -33,7 +33,7 @@
         <div class="form-info-item">
             <span class="form-info-lbl">Inicio</span>
             <span class="form-info-val">
-                {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '—' }}
+                {{ prod.FechaInicio.strftime('%d/%m/%Y %H:%M') if prod.FechaInicio else '-' }}
             </span>
         </div>
         <div class="form-info-item">
@@ -45,6 +45,7 @@
     <hr class="form-divider">
 
     <form method="POST" action="{{ url_for('produccion.registrar_defectos', id=prod.IdProduccion) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="form-group">
             <label class="form-label" for="cantidad">
@@ -57,17 +58,18 @@
                 name="cantidad"
                 class="form-input"
                 min="1"
-                max="{{ prod.CantidadPlaneada }}"
-                placeholder="Ej. 3"
+                value="1"
+                placeholder="1"
+                readonly
                 required
             >
-            <span class="form-hint">Máximo {{ prod.CantidadPlaneada }} piezas (cantidad planeada)</span>
+            <span class="form-hint">Se registra 1 pieza defectuosa por envio</span>
         </div>
 
         <div class="form-group">
             <label class="form-label" for="descripcion">
                 <i class="ph ph-note-pencil"></i>
-                Descripción del defecto
+                Descripcion del defecto
             </label>
             <textarea
                 id="descripcion"
@@ -76,11 +78,11 @@
                 rows="3"
                 placeholder="Ej. Fisura en el molde, color inconsistente, medidas fuera de tolerancia..."
             ></textarea>
-            <span class="form-hint">Opcional — ayuda al análisis de calidad</span>
+            <span class="form-hint">Opcional, ayuda al analisis de calidad</span>
         </div>
 
         <div class="form-actions">
-            <a href="{{ url_for('produccion.index') }}" class="btn btn-outline">
+            <a href="{{ url_for('produccion.produccion') }}" class="btn btn-outline">
                 <i class="ph ph-x"></i> Cancelar
             </a>
             <button type="submit" class="btn btn-red">

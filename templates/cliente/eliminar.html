@@ -1,52 +1,55 @@
 {% extends "layout_emp.html" %}
-{% block page_title %}Eliminar Cliente{% endblock %}
+{% block page_title %}Eliminar Empleado{% endblock %}
 {% block container %}
 
 <div class="page-header fade-up">
-    <h2 class="page-header-title">ELIMINAR CLIENTE</h2>
+    <h2 class="page-header-title"></h2>
     <a href="{{ url_for('clientes.clientes') }}" class="btn btn-outline">
         <i class="ph ph-arrow-left"></i> Volver
     </a>
 </div>
 
-<div class="confirm-card fade-up" style="animation-delay:0.07s">
-    <div class="confirm-icon">
-        <i class="ph ph-warning"></i>
+<div class="confirm-wrap fade-up" style="animation-delay:0.07s">
+    <div class="confirm-card">
+
+        <div class="confirm-icon-wrap">
+            <i class="ph ph-warning" style="font-size:28px; color:var(--red);"></i>
+        </div>
+
+        <h3 class="confirm-title">¿Desactivar este cliente?</h3>
+        <p class="confirm-desc">
+            El cliente quedará inactivo y no podrá acceder al sistema.
+            Podrás reactivarlo en cualquier momento desde la lista de clientes.
+        </p>
+
+        <div class="confirm-info">
+            <div class="confirm-info-row">
+                <span class="cir-key">ID</span>
+                <span class="cir-val mono">{{ c.IdCliente }}</span>
+            </div>
+            <div class="confirm-info-row">
+                <span class="cir-key">Nombre</span>
+                <span class="cir-val">{{ p.Nombre }} {{ p.Apellidos }}</span>
+            </div>
+            <div class="confirm-info-row">
+                <span class="cir-key">Correo</span>
+                <span class="cir-val mono">{{ p.CorreoElectronico }}</span>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('clientes.eliminar_cliente', id=c.IdCliente) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="confirm-actions">
+                <a href="{{ url_for('clientes.clientes') }}" class="btn btn-outline">
+                    <i class="ph ph-x"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-red">
+                    <i class="ph ph-prohibit"></i> Sí, Desactivar
+                </button>
+            </div>
+        </form>
+
     </div>
-
-    <h3 class="confirm-title">¿Desactivar este cliente?</h3>
-    <p class="confirm-desc">
-        El cliente quedará inactivo y no podrá acceder al sistema.
-        Podrás reactivarlo en cualquier momento.
-    </p>
-
-    <div class="confirm-info">
-        <div class="detail-row">
-            <span class="detail-key">ID</span>
-            <span class="detail-val td-mono">{{ c.IdCliente }}</span>
-        </div>
-        <div class="detail-row">
-            <span class="detail-key">Nombre</span>
-            <span class="detail-val">{{ p.Nombre }} {{ p.Apellidos }}</span>
-        </div>
-        <div class="detail-row">
-            <span class="detail-key">Correo</span>
-            <span class="detail-val td-mono">{{ p.CorreoElectronico }}</span>
-        </div>
-    </div>
-
-    <form method="POST" action="{{ url_for('clientes.eliminar_cliente', id=c.IdCliente) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <div class="confirm-actions">
-            <a href="{{ url_for('clientes.clientes') }}" class="btn btn-outline">
-                <i class="ph ph-x"></i> Cancelar
-            </a>
-            <button type="submit" class="btn btn-red">
-                <i class="ph ph-prohibit"></i> Sí, Desactivar
-            </button>
-        </div>
-    </form>
-
 </div>
 
 {% endblock %}

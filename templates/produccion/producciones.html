@@ -68,6 +68,7 @@
                 </div>
                 <div class="kanban-card-actions">
                     <form method="POST" action="{{ url_for('produccion.iniciar', id=prod.IdProduccion) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn btn-blue" type="submit">
                             <i class="ph ph-play"></i> Iniciar
                         </button>
@@ -118,6 +119,7 @@
                     </a>
                     <form method="POST" action="{{ url_for('produccion.cancelar', id=prod.IdProduccion) }}"
                         onsubmit="return confirm('¿Cancelar esta producción? Se revertirá el descuento de materia prima.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button class="btn-outline-danger" type="submit">
                             <i class="ph ph-x-circle"></i> Cancelar
                         </button>

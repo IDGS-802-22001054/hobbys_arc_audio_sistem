@@ -1,0 +1,61 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}COSTOS Y UTILIDADES{% endblock %}
+
+{% block container %}
+
+<div class="management-header">
+    <h2>COSTOS Y UTILIDADES</h2>
+    <div class="header-tools">
+        
+        <a href="{{ url_for('costos_utilidades.configurar_reporte') }}" class="btn-add" style="background: #f1c40f; color: black; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:bold;">
+            <i class="ph ph-file-xls"></i> EXPORTAR REPORTE
+        </a>
+    </div>
+</div>
+
+<div class="metrics-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 25px 0;">
+    <div class="metric-card" style="background: #1a1c23; padding: 25px; border-radius: 12px; border-left: 5px solid #3498db;">
+        <label style="color: #8a8d93; font-size: 12px; font-weight: bold;">TOTAL VENDIDO</label>
+        <h1 style="color: #3498db; margin: 10px 0;">$ {{ "{:,.2f}".format(corte.TotalVentas) }}</h1>
+    </div>
+    <div class="metric-card" style="background: #1a1c23; padding: 25px; border-radius: 12px; border-left: 5px solid #e74c3c;">
+        <label style="color: #8a8d93; font-size: 12px; font-weight: bold;">COSTO DE VENTAS</label>
+        <h1 style="color: #e74c3c; margin: 10px 0;">$ {{ "{:,.2f}".format(corte.TotalCosto) }}</h1>
+    </div>
+    <div class="metric-card" style="background: #1a1c23; padding: 25px; border-radius: 12px; border-left: 5px solid #2ecc71;">
+        <label style="color: #8a8d93; font-size: 12px; font-weight: bold;">UTILIDAD NETA</label>
+        <h1 style="color: #2ecc71; margin: 10px 0;">$ {{ "{:,.2f}".format(corte.UtilidadDiaria) }}</h1>
+    </div>
+</div>
+
+<div class="table-wrapper" style="background: #1a1c23; padding: 20px; border-radius: 12px;">
+    <table class="custom-table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th style="text-align: left;">PRODUCTO</th>
+                <th>EXISTENCIAS</th>
+                <th style="text-align: right;">COSTO/PIEZA</th>
+                <th style="text-align: right;">UTILIDAD/PIEZA</th>
+                <th>DEFECTUOSOS</th>
+                <th style="text-align: right;">COSTO TOTAL INV.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in productos %}
+            <tr>
+                <td style="padding: 15px 0;">{{ p.Nombre }}</td>
+                <td style="text-align: center;">{{ p.StockActual }}</td>
+                <td style="text-align: right;">$ {{ "{:,.2f}".format(p.CostoProduccion) }}</td>
+                <td style="text-align: right; color: {{ '#2ecc71' if p.UtilidadPorPieza > 0 else '#e74c3c' }}; font-weight: bold;">
+                    $ {{ "{:,.2f}".format(p.UtilidadPorPieza) }}
+                </td>
+                <td style="text-align: center; color: #e74c3c;">{{ p.TotalDefectuosos }}</td>
+                <td style="text-align: right; font-weight: bold;">$ {{ "{:,.2f}".format(p.CostoProduccion * p.StockActual) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

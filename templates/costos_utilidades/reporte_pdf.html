@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Financiero - Hobbys Car Audio</title>
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reporte_pdf.css') }}">
+</head>
+<body>
+
+    <nav class="no-print-nav">
+        <a href="{{ url_for('costos_utilidades.configurar_reporte') }}" class="btn-nav btn-back">
+            <i class="ph ph-arrow-left"></i> REGRESAR A FILTROS
+        </a>
+        <div style="color: white; font-size: 12px;">
+            <i class="ph ph-info"></i> Vista previa del documento. Presiona el botón amarillo para imprimir o guardar como PDF.
+        </div>
+        <button onclick="window.print()" class="btn-print btn-nav">
+            <i class="ph ph-printer"></i> IMPRIMIR / PDF
+        </button>
+    </nav>
+
+    <div class="report-page">
+        
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='img/Logo-removebg-preview.png') }}" alt="Logo Hobbys Car Audio" class="logo-img">
+        </div>
+
+        <table class="header-table">
+            <tr>
+                <td style="border: none;">
+                    <h1 class="company-name">HOBBYS CAR AUDIO SYSTEM</h1>
+                    <h2 class="report-title">Reporte de Costos y Utilidades</h2>
+                </td>
+                <td style="border: none; text-align: right; color: #666; font-size: 12px;">
+                    <strong>Periodo:</strong> {{ f_ini }} al {{ f_fin }}<br>
+                    <strong>Generado:</strong> {{ hoy.strftime('%d/%m/%Y %H:%M') }}
+                </td>
+            </tr>
+        </table>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th style="text-align: center;">Cant.</th>
+                    <th style="text-align: right;">Venta Total</th>
+                    <th style="text-align: right;">Costo Total</th>
+                    <th style="text-align: right;">Utilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set t_v = [0 | float] %}
+                {% set t_c = [0 | float] %}
+            
+                {% for v in ventas %}
+                    {% for d in v.detalles %}
+                    {% set c_f = (d.producto_terminado.CostoProduccion * d.Cantidad) if d.producto_terminado else 0 %}
+                
+                    <tr>
+                        <td>{{ v.FechaVenta.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ d.producto_terminado.Nombre }}</td>
+                        <td style="text-align: center;">{{ d.Cantidad }}</td>
+                        <td style="text-align: right;">$ {{ "{:,.2f}".format(d.Subtotal) }}</td>
+                        <td style="text-align: right;">$ {{ "{:,.2f}".format(c_f) }}</td>
+                        <td style="text-align: right; font-weight: bold; color: {{ '#27ae60' if (d.Subtotal - c_f) > 0 else '#c0392b' }};">
+                            $ {{ "{:,.2f}".format(d.Subtotal - c_f) }}
+                        </td>
+                    </tr>
+                
+                    {# Acumuladores con filtro float para evitar error de tipos #}
+                    {% if t_v.append(t_v.pop() + (d.Subtotal | float)) %}{% endif %}
+                    {% if t_c.append(t_c.pop() + (c_f | float)) %}{% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="3" style="text-align: right;">TOTALES DEL PERIODO:</td>
+                    <td style="text-align: right;">$ {{ "{:,.2f}".format(t_v[0]) }}</td>
+                    <td style="text-align: right;">$ {{ "{:,.2f}".format(t_c[0]) }}</td>
+                    <td style="text-align: right;">$ {{ "{:,.2f}".format(t_v[0] - t_c[0]) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="footer">
+            <p>Este documento es un reporte financiero oficial generado automáticamente por el sistema administrativo de <strong>Hobbys Car Audio System</strong>.</p>
+            <p>© {{ hoy.year }} - Leon, Guanajuato. Todos los derechos reservados.</p>
+        </div>
+    </div>
+
+</body>
+</html>

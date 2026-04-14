@@ -29,7 +29,7 @@
                 </a>
  
                 <div class="nav-section">Mis Compras</div>
-                <a href="#" class="nav-item {% if active == 'historial' %}active{% endif %}">
+                <a href="{{ url_for('clientes.historial_compras') }}" class="nav-item {% if active == 'historial' %}active{% endif %}">
                     <i class="ph ph-clock-counter-clockwise"></i> Historial de Compras
                 </a>
 

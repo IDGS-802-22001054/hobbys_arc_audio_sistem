@@ -1,8 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash
 from . import proveedores_bp
 from models import db, Proveedor
+from flask_login import login_required
 
 @proveedores_bp.route("/proveedores")
+@login_required
 def listar():
     search = request.args.get('search', '')
     if search:
@@ -19,6 +21,7 @@ def listar():
                            search=search)
 
 @proveedores_bp.route("/proveedores/nuevo", methods=["GET", "POST"])
+@login_required
 def registrar():
     if request.method == "POST":
         rfc_input = request.form.get('rfc').upper()
@@ -49,12 +52,14 @@ def registrar():
     return render_template("proveedores/agregar.html", active='proveedores')
 
 @proveedores_bp.route("/proveedores/detalles/<int:id>")
+@login_required
 def detalles(id):
     proveedor = Proveedor.query.get_or_404(id)
     
     return render_template("proveedores/detalles.html", p=proveedor, active='proveedores')
 
 @proveedores_bp.route("/proveedores/editar/<int:id>", methods=["GET", "POST"])
+@login_required
 def editar(id):
     p = Proveedor.query.get_or_404(id)
     
@@ -77,6 +82,7 @@ def editar(id):
     return render_template("proveedores/editar.html", p=p, active='proveedores')
 
 @proveedores_bp.route("/proveedores/desactivar/<int:id>")
+@login_required
 def desactivar(id):
     try:
         p = Proveedor.query.get_or_404(id)
@@ -90,6 +96,7 @@ def desactivar(id):
     return redirect(url_for("proveedores.listar"))
 
 @proveedores_bp.route('/proveedores/reactivar/<int:id>')
+@login_required
 def reactivar(id):
     proveedor = Proveedor.query.get_or_404(id)
     

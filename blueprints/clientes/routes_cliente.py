@@ -3,8 +3,10 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
-from datetime import datetime, timedelta
-from models import db, Usuario, SesionUsuario, Cliente, Rol, Persona
+from sqlalchemy.orm import joinedload
+from datetime import datetime
+from decimal import Decimal
+from models import db, Usuario, SesionUsuario, Cliente, Rol, Venta, VentaDetalle
 from forms import LoginForm, ClienteForm
 from flask_mail import Message
 from extensions import mail
@@ -84,6 +86,7 @@ def _enviar_codigo_verificacion(correo: str, codigo: str, nombre: str):
         return False
 
 @clientes_bp.route('/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_cliente():
     form = forms.ClienteForm(request.form)
 
@@ -232,6 +235,7 @@ def _enmascarar_correo(correo: str) -> str:
     return usuario[:2] + '*' * (len(usuario) - 2) + '@' + dominio
 
 @clientes_bp.route('/reenviar-codigo', methods=['POST'])
+@login_required
 def reenviar_codigo():
     from flask import jsonify
     datos = session.get('verificacion')
@@ -352,7 +356,40 @@ def ver_perfil():
         IdPersona=current_user.IdPersona
     ).first_or_404()
     persona = current_user.persona
-    return render_template('cliente/verPerfil.html', cliente=cliente, persona=persona)
+    return render_template('cliente/verPerfil.html', cliente=cliente, persona=persona, active='perfil')
+
+
+@clientes_bp.route('/perfil/historial-compras', methods=['GET'])
+@login_required
+def historial_compras():
+    cliente = db.session.query(Cliente).filter_by(
+        IdPersona=current_user.IdPersona
+    ).first_or_404()
+
+    ventas = (
+        db.session.query(Venta)
+        .options(
+            joinedload(Venta.detalles).joinedload(VentaDetalle.producto_terminado)
+        )
+        .filter(Venta.IdCliente == cliente.IdCliente)
+        .order_by(Venta.FechaVenta.desc(), Venta.IdVenta.desc())
+        .all()
+    )
+
+    total_gastado = sum((venta.TotalVenta for venta in ventas), Decimal("0.00"))
+    total_productos = sum((sum(detalle.Cantidad for detalle in venta.detalles) for venta in ventas), 0)
+    ultima_compra = ventas[0].FechaVenta if ventas else None
+
+    return render_template(
+        'cliente/historial_compras.html',
+        cliente=cliente,
+        ventas=ventas,
+        total_gastado=total_gastado,
+        total_compras=len(ventas),
+        total_productos=total_productos,
+        ultima_compra=ultima_compra,
+        active='historial',
+    )
 
 @clientes_bp.route('/perfil/editar', methods=['GET', 'POST'])
 @login_required

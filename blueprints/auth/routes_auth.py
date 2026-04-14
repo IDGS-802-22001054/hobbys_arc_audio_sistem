@@ -195,6 +195,7 @@ def recuperar_paso1():
     return render_template('auth/recuperar.html')
 
 @auth_bp.route('/recuperar/reenviar', methods=['POST'])
+@login_required
 def recuperar_reenviar():
     from flask import jsonify
     datos = session.get('recuperacion')
@@ -213,6 +214,7 @@ def recuperar_reenviar():
     return jsonify({'ok': False, 'mensaje': 'No se pudo reenviar el correo.'})
 
 @auth_bp.route('/recuperar/verificar', methods=['POST'])
+@login_required
 def recuperar_verificar():
     """Valida el código ingresado en el modal y redirige al formulario de nueva contraseña."""
     codigo_ingresado = request.form.get('codigo_verificacion', '').strip()
@@ -243,6 +245,7 @@ def recuperar_verificar():
     return redirect(url_for('auth.recuperar_nueva_pass'))
 
 @auth_bp.route('/recuperar/nueva', methods=['GET', 'POST'])
+@login_required
 def recuperar_nueva_pass():
     datos = session.get('recuperacion')
  

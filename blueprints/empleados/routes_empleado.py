@@ -57,87 +57,25 @@ def _datos_direccion_form(form):
         'codigo_postal': (form.codigo_postal.data or '').strip() or None,
     }
 
-def _normalizar(texto):
-    texto = unicodedata.normalize('NFD', texto)
-    texto = ''.join(c for c in texto if unicodedata.category(c) != 'Mn')
-    texto = texto.lower()
-    texto = re.sub(r'[^a-z0-9]', '', texto)
-    return texto
+
+def _roles_activos():
+    return db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
 
 
-def generar_identificador(nombre, apellidos):
-    partes_nombre = nombre.strip().split()
-    primer_nombre = _normalizar(partes_nombre[0]) if partes_nombre else 'usuario'
-
-    partes_apellidos = apellidos.strip().split()
-    inicial_ap1 = _normalizar(partes_apellidos[0])[0] if len(partes_apellidos) > 0 else ''
-    inicial_ap2 = _normalizar(partes_apellidos[1])[0] if len(partes_apellidos) > 1 else ''
-
-    base = primer_nombre + inicial_ap1 + inicial_ap2
-
-    existe = db.session.execute(
-        text('SELECT COUNT(*) FROM Usuario WHERE Identificador = :id'),
-        {'id': base}
-    ).scalar()
-
-    if not existe:
-        return base
-
-    contador = 2
-    while True:
-        candidato = f'{base}{contador}'
-        existe = db.session.execute(
-            text('SELECT COUNT(*) FROM Usuario WHERE Identificador = :id'),
-            {'id': candidato}
-        ).scalar()
-        if not existe:
-            return candidato
-        contador += 1
-
-
-def generar_password(nombre, apellidos, telefono):
-    simbolos = '!@#$%&*'
-
-    partes_nombre = nombre.strip().split()
-    inicial_nombre = _normalizar(partes_nombre[0])[0].upper() if partes_nombre else 'U'
-
-    partes_apellidos = apellidos.strip().split()
-    dos_ap1 = _normalizar(partes_apellidos[0])[:2] if partes_apellidos else 'xx'
-
-    digitos_tel = re.sub(r'\D', '', telefono or '')
-    ultimos4 = digitos_tel[-4:] if len(digitos_tel) >= 4 else digitos_tel.zfill(4)
-
-    simbolo = random.choice(simbolos)
-    base = inicial_nombre + dos_ap1 + ultimos4 + simbolo
-
-    while len(base) < 8:
-        base += random.choice(string.ascii_lowercase + string.digits)
-
-    return base
-
-
-def enviar_credenciales_por_correo(correo_destino, nombre, identificador, password_plano):
-    try:
-        msg      = Message(subject='Bienvenido al sistema — Tus credenciales de acceso')
-        msg.recipients = [correo_destino]
-        msg.body = (
-            f"Hola {nombre},\n\n"
-            f"Se ha creado tu cuenta de acceso al sistema.\n\n"
-            f"  Usuario:     {identificador}\n"
-            f"  Contraseña:  {password_plano}\n\n"
-            f"IMPORTANTE: Al iniciar sesión por primera vez el sistema te pedirá\n"
-            f"cambiar tu contraseña. No podrás usar el sistema hasta\n"
-            f"que realices ese cambio. Se recomienda también que cambies tu usuario,\n\n"
-            f"pero eso lo puedes hacer desde tu perfil dando click en el icono\n\n"
-            f"superior derecha.\n\n"
-            f"Si tienes problemas para acceder, comunícate con el administrador.\n\n"
-            f"Saludos,\n"
-            f"Equipo de administración"
-        )
-        mail.send(msg)
-    except Exception as e:
-        print(f'[ERROR correo] {e}')
-        flash('Empleado registrado, pero no se pudo enviar el correo con credenciales.', 'warning')
+def _puestos_desde_roles(roles):
+    puestos = []
+    for rol in roles:
+        nombre = (rol.Nombre or '').strip()
+        nombre_normalizado = nombre.lower()
+        if (
+            not nombre
+            or 'usuario' in nombre_normalizado
+            or 'consulta' in nombre_normalizado
+            or 'cliente' in nombre_normalizado
+        ):
+            continue
+        puestos.append(nombre)
+    return puestos
 
 @empleados_bp.route('/empleados', methods=['GET'])
 def empleados():
@@ -167,20 +105,30 @@ def empleados():
 @empleados_bp.route('/empleados/nuevo', methods=['GET', 'POST'])
 def nuevo_empleado():
     form = forms.EmpleadoForm(request.form)
-
+    roles = _roles_activos()
+    puestos = _puestos_desde_roles(roles)
+ 
     if request.method == 'POST':
         foto_b64  = foto_a_base64(request.files.get('foto'))
         direccion = _datos_direccion_form(form)
-
-        nombre = (form.nombre.data or '').strip()
-        apellidos = (form.apellidos.data or '').strip()
-        telefono  = (form.telefono.data or '').strip()
         correo = (form.correo.data or '').strip()
 
-        identificador  = generar_identificador(nombre, apellidos)
-        password_plano = generar_password(nombre, apellidos, telefono)
-        password_hash  = generate_password_hash(password_plano)
-
+        correo_existente = db.session.query(Persona.IdPersona).filter(
+            db.func.lower(Persona.CorreoElectronico) == correo.lower()
+        ).first()
+        if correo_existente:
+            flash('El correo ya está registrado. Use uno diferente.')
+            return render_template(
+                'empleado/registrar.html',
+                form=form,
+                roles=roles,
+                puestos=puestos,
+            )
+ 
+        password_hash = None
+        if form.identificador.data:
+            password_hash = generate_password_hash(form.password.data)
+ 
         db.session.execute(
             text(
                 'CALL SP_Empleados_Registrar('
@@ -190,12 +138,12 @@ def nuevo_empleado():
                 ':identificador, :password_hash, :id_rol, @id_empleado)'
             ),
             {
-                'nombre':        nombre,
-                'apellidos':     apellidos,
-                'telefono':      telefono,
-                'correo':        correo,
-                'foto':          foto_b64,
-                'puesto':        form.puesto.data,
+                'nombre': form.nombre.data,
+                'apellidos': form.apellidos.data,
+                'telefono': form.telefono.data,
+                'correo': correo,
+                'foto': foto_b64,
+                'puesto': form.puesto.data,
                 'fecha_ingreso': datetime.now(),
                 'salario':       form.salario.data,
                 'identificador': identificador,
@@ -223,8 +171,7 @@ def nuevo_empleado():
         flash(f'Empleado registrado. Usuario asignado: {identificador}. Se envió el correo con credenciales.', 'success')
         return redirect(url_for('empleados.empleados'))
 
-    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
-    return render_template('empleado/registrar.html', form=form, roles=roles)
+    return render_template('empleado/registrar.html', form=form, roles=roles, puestos=puestos)
 
 
 @empleados_bp.route('/empleados/cambiar-credenciales', methods=['GET', 'POST'])
@@ -329,8 +276,8 @@ def editar_empleado(id):
         db.session.commit()
         flash('Empleado actualizado correctamente.', 'success')
         return redirect(url_for('empleados.empleados'))
-
-    roles = db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
+ 
+    roles = _roles_activos()
     return render_template('empleado/editar.html', form=form, roles=roles, id=id)
 
 

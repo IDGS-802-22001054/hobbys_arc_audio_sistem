@@ -1,26 +1,38 @@
 from flask import Flask, render_template, redirect, url_for, request
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
-from flask_login import LoginManager, current_user,  logout_user
+from flask_login import LoginManager, current_user, logout_user
 from config import DevelopmentConfig
-from models import db, Usuario
+from models import db, Usuario, SolicitudProduccion
 from sqlalchemy import text
 from extensions import mail
 
+from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.compras import compras_bp
 from blueprints.ventas.routes import ventas_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.proveedores import proveedores_bp
+from blueprints.costos_utilidades.cu_routes import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
+from blueprints.ventas import ventas_bp
 from blueprints.dashboard.routes_dashboard import dashboard_bp
 from blueprints.clientes.routes_cliente import clientes_bp
 from blueprints.auth.routes_auth import auth_bp
 from blueprints.empleados.routes_empleado import empleados_bp
-from blueprints.producción.routes_produccion import produccion_bp
+
+from config import DevelopmentConfig
+from models import db, Usuario
+from models import db, CorteVentaDiario
+from flask import session
+from sqlalchemy import text
+from flask_apscheduler import APScheduler
+from datetime import date, timedelta
 
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
+scheduler = APScheduler()
+
 login_manager = LoginManager()
 
 login_manager.login_view = 'auth.login'
@@ -32,6 +44,17 @@ login_manager.login_message_category = 'warning'
 def load_user(user_id):
     return db.session.get(Usuario, int(user_id))
 
+def realizar_corte_automatico(aplicacion):
+    with aplicacion.app_context():
+        ayer = date.today() - timedelta(days=1)
+        existe = CorteVentaDiario.query.filter_by(FechaCorte=ayer).first()
+        if not existe:
+            nuevo_corte = CorteVentaDiario(
+                FechaCorte=ayer,
+                IdUsuarioRegistro=1 
+            )
+            db.session.add(nuevo_corte)
+            db.session.commit()
 
 def inicializar_base_datos(aplicacion):
     with aplicacion.app_context():
@@ -44,6 +67,7 @@ def registrar_blueprints(aplicacion):
     aplicacion.register_blueprint(proveedores_bp)
     aplicacion.register_blueprint(materia_prima_bp)
     aplicacion.register_blueprint(compras_bp)
+    aplicacion.register_blueprint(costos_utilidades_bp)
     aplicacion.register_blueprint(ventas_bp)
     aplicacion.register_blueprint(dashboard_bp)
     aplicacion.register_blueprint(auth_bp)
@@ -61,8 +85,15 @@ def registrar_manejadores_error(aplicacion):
 def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
-        es_autorizado = True
         alertas = []
+        solicitudes_pendientes = []
+        rol_actual = (
+            getattr(getattr(current_user, 'rol', None), 'Nombre', '')
+            if getattr(current_user, 'is_authenticated', False)
+            else ''
+        )
+        es_admin = rol_actual == 'Administrador'
+        es_autorizado = rol_actual in ['Administrador', 'Almacenista']
 
         if es_autorizado:
             query = text("""
@@ -73,10 +104,33 @@ def registrar_context_processors(aplicacion):
             """)
             alertas = db.session.execute(query).fetchall()
 
+        if es_admin:
+            query_solicitudes = text("""
+                SELECT
+                    sp.IdSolicitudProduccion,
+                    sp.CantidadSolicitada,
+                    sp.FechaSolicitud,
+                    pt.Nombre AS NombreProducto,
+                    per.Nombre AS NombreSolicita,
+                    per.Apellidos AS ApellidosSolicita
+                FROM SolicitudProduccion sp
+                INNER JOIN ProductoTerminado pt
+                    ON pt.IdProductoTerminado = sp.IdProductoTerminado
+                INNER JOIN Usuario u
+                    ON u.IdUsuario = sp.IdUsuarioSolicita
+                INNER JOIN Persona per
+                    ON per.IdPersona = u.IdPersona
+                WHERE sp.Estado = 'PENDIENTE'
+                ORDER BY sp.FechaSolicitud DESC
+            """)
+            solicitudes_pendientes = db.session.execute(query_solicitudes).fetchall()
+
         return dict(
             alertas_criticas=alertas,
-            total_alertas=len(alertas),
+            solicitudes_pendientes=solicitudes_pendientes,
+            total_alertas=len(alertas) + len(solicitudes_pendientes),
             puede_ver_alertas=es_autorizado,
+            puede_aprobar_solicitudes=es_admin,
         )
 
 
@@ -96,21 +150,15 @@ def crear_app():
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
     login_manager.init_app(aplicacion)
+    scheduler.init_app(aplicacion)
+    
+    @scheduler.task('cron', id='corte_diario_job', hour=0, minute=0)
+    def job_corte():
+        realizar_corte_automatico(aplicacion)
+        
+    scheduler.start()
 
-    @aplicacion.before_request
-    def verificar_cambio_credenciales():
-        rutas_libres = {
-            'auth.login',
-            'auth.logout',
-            'empleados.cambiar_credenciales',
-            'static',
-        }
-        if (
-            current_user.is_authenticated
-            and getattr(current_user, 'DebeCambiarCredenciales', False)
-            and request.endpoint not in rutas_libres
-        ):
-            return redirect(url_for('empleados.cambiar_credenciales'))
+    login_manager.init_app(aplicacion)
 
     inicializar_base_datos(aplicacion)
     registrar_blueprints(aplicacion)

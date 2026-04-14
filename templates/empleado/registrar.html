@@ -90,8 +90,15 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    {{ form.puesto.label(class="form-label") }}
-                    {{ form.puesto(class="form-input", placeholder="Ej. Tecnico, Vendedor") }}
+                    <label class="form-label" for="puesto">Puesto</label>
+                    <select id="puesto" name="puesto" class="form-input">
+                        <option value="">Seleccione un puesto</option>
+                        {% for puesto in puestos %}
+                        <option value="{{ puesto }}" {% if form.puesto.data == puesto %}selected{% endif %}>
+                            {{ puesto }}
+                        </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="form-group">
                     {{ form.salario.label(class="form-label") }}
