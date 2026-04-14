@@ -84,6 +84,26 @@
         </div>
     </div>
 
+    <script>
+        (() => {
+            const limiteMs = Number({{ inactividad_timeout_ms|default(7200000)|tojson }});
+            const destinoLogout = {{ url_for('auth.logout')|tojson }};
+            let temporizador = null;
+
+            const reiniciarTemporizador = () => {
+                window.clearTimeout(temporizador);
+                temporizador = window.setTimeout(() => {
+                    window.location.href = destinoLogout;
+                }, limiteMs);
+            };
+
+            ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evento) => {
+                window.addEventListener(evento, reiniciarTemporizador, { passive: true });
+            });
+
+            reiniciarTemporizador();
+        })();
+    </script>
 </body>
 
 </html>

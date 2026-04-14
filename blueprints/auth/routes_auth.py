@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 from datetime import datetime
@@ -72,6 +72,7 @@ def login():
             flash('Error interno al iniciar sesión, intenta de nuevo', 'danger')
             return render_template('index.html', form=form)
 
+        session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
         login_user(usuario, remember=False)
         return redirect(url_for(destino))
 
@@ -81,10 +82,21 @@ def login():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    sesion_activa = db.session.query(SesionUsuario).filter_by(
-        IdUsuario=current_user.IdUsuario,
-        Activa=True
-    ).order_by(SesionUsuario.FechaInicio.desc()).first()
+    id_sesion = session.get('id_sesion_usuario')
+    sesion_activa = None
+
+    if id_sesion:
+        sesion_activa = db.session.get(SesionUsuario, id_sesion)
+        if sesion_activa and (
+            sesion_activa.IdUsuario != current_user.IdUsuario or not sesion_activa.Activa
+        ):
+            sesion_activa = None
+
+    if sesion_activa is None:
+        sesion_activa = db.session.query(SesionUsuario).filter_by(
+            IdUsuario=current_user.IdUsuario,
+            Activa=True
+        ).order_by(SesionUsuario.FechaInicio.desc()).first()
 
     if sesion_activa:
         sesion_activa.Activa       = False
@@ -95,5 +107,6 @@ def logout():
         except Exception:
             db.session.rollback()
 
+    session.pop('id_sesion_usuario', None)
     logout_user()
     return redirect(url_for('auth.login'))
