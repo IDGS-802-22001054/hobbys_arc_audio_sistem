@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import OperationalError
@@ -143,6 +143,7 @@ def nuevo_cliente():
                 )
                 db.session.add(nueva_sesion)
                 db.session.commit()
+                session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
                 login_user(usuario, remember=False)
                 rol = usuario.rol.Nombre.lower().strip()
                 flash('Cuenta creada correctamente. ¡Bienvenido!', 'success')

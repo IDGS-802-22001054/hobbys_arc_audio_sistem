@@ -33,7 +33,7 @@
 
                 {% if rol == 'administrador' %}
                 <div class="nav-section">Configuracion</div>
-                <a href="#" class="nav-item {% if active == 'opciones' %}active{% endif %}">
+                <a href="{{ url_for('configuracion_sistema.editar') }}" class="nav-item {% if active == 'opciones' %}active{% endif %}">
                     <i class="ph ph-gear"></i> Opciones
                 </a>
                 <a href="{{ url_for('empleados.empleados') }}" class="nav-item {% if active == 'empleados' %}active{% endif %}">
@@ -210,6 +210,26 @@
         </div>
     </div>
 
+    <script>
+        (() => {
+            const limiteMs = Number({{ inactividad_timeout_ms|default(7200000)|tojson }});
+            const destinoLogout = {{ url_for('auth.logout')|tojson }};
+            let temporizador = null;
+
+            const reiniciarTemporizador = () => {
+                window.clearTimeout(temporizador);
+                temporizador = window.setTimeout(() => {
+                    window.location.href = destinoLogout;
+                }, limiteMs);
+            };
+
+            ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evento) => {
+                window.addEventListener(evento, reiniciarTemporizador, { passive: true });
+            });
+
+            reiniciarTemporizador();
+        })();
+    </script>
 </body>
 
 </html>

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from models import AlertaSistema, Produccion, Rol, Usuario, db
+from services.configuracion import alertas_materia_prima_habilitadas
 
 TIPO_ALERTA_MATERIAL_INSUFICIENTE = 'MATERIAL_INSUFICIENTE'
 
@@ -44,7 +45,7 @@ def obtener_faltantes_materia_prima(produccion):
 
 
 def notificar_material_insuficiente_a_administradores(produccion, faltantes):
-    if not faltantes:
+    if not faltantes or not alertas_materia_prima_habilitadas():
         return 0
 
     producto = getattr(produccion, 'producto_terminado', None)

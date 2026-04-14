@@ -247,6 +247,9 @@ class ConfiguracionSistema(BaseModel):
     HorasInactividadCierreSesion = db.Column(
         db.Integer, nullable=False, server_default=sql_text("2")
     )
+    UnidadInactividadCierreSesion = db.Column(
+        db.String(10), nullable=False, server_default=sql_text("'HORAS'")
+    )
     AlertarPocasPiezasTerminadas = db.Column(
         db.Boolean, nullable=False, server_default=sql_text("1")
     )
