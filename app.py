@@ -24,7 +24,7 @@ from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
 from blueprints.pagina.pagina_routes import publico_bp
 
-from models import CorteVentaDiario, SesionUsuario, Usuario, db
+from models import CorteVentaDiario, SesionUsuario, SolicitudProduccion, Usuario, db
 
 from services.configuracion import (
     alertas_materia_prima_habilitadas,

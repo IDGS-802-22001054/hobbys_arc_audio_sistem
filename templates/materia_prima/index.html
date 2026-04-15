@@ -66,12 +66,28 @@
 
                 <td>{{ mp.Descripcion }}</td>
 
-                {# Color de Stock: SOLO rojo si está activo y bajo el mínimo #}
+                {# Color de Stock y Conversión a Kilos/Litros con 3 decimales #}
                 <td style="font-weight: 800; color: {{ 'var(--red)' if mp.Activo and mp.StockActual <= mp.StockMinimo else 'var(--text)' }}">
-                    {{ mp.StockActual }}
+                    {% if mp.unidad_medida and mp.unidad_medida.Nombre in ['Gramos', 'Mililitros'] %}
+                        {{ "%.3f"|format(mp.StockActual / 1000) }}
+                    {% else %}
+                        {{ mp.StockActual }}
+                    {% endif %}
                 </td>
 
-                <td>{{ mp.unidad_medida.Nombre if mp.unidad_medida else 'Sin unidad' }}</td> 
+                <td>
+                    {% if mp.unidad_medida %}
+                        {% if mp.unidad_medida.Nombre == 'Gramos' %}
+                            Kilos
+                        {% elif mp.unidad_medida.Nombre == 'Mililitros' %}
+                            Litros
+                        {% else %}
+                            {{ mp.unidad_medida.Nombre }}
+                        {% endif %}
+                    {% else %}
+                        Sin unidad
+                    {% endif %}
+                </td> 
                 
                 <td>${{ mp.PrecioUnitario }}</td>
 
@@ -86,7 +102,6 @@
                         <i class="ph ph-eye"></i>
                     </a>
                     
-                    {# Editar siempre disponible o podrías bloquearlo si not mp.Activo #}
                     <a href="{{ url_for('materia_prima.editar', id=mp.IdMateriaPrima) }}" class="btn-square bg-edit" title="Editar Material">
                         <i class="ph ph-pencil-simple"></i>
                     </a>
