@@ -543,6 +543,7 @@ class SolicitudProduccion(BaseModel):
     __tablename__ = "SolicitudProduccion"
 
     IdSolicitudProduccion = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    IdVenta = db.Column(db.Integer, db.ForeignKey("Venta.IdVenta"))
     IdProductoTerminado = db.Column(
         db.Integer, db.ForeignKey("ProductoTerminado.IdProductoTerminado"), nullable=False
     )
@@ -562,6 +563,7 @@ class SolicitudProduccion(BaseModel):
     producto_terminado = db.relationship(
         "ProductoTerminado", back_populates="solicitudes_produccion", uselist=False
     )
+    venta = db.relationship("Venta", back_populates="solicitudes_produccion", uselist=False)
     usuario_solicita = db.relationship(
         "Usuario",
         back_populates="solicitudes_realizadas",
@@ -573,6 +575,27 @@ class SolicitudProduccion(BaseModel):
         foreign_keys=[IdUsuarioAprueba], uselist=False,
     )
     producciones = db.relationship("Produccion", back_populates="solicitud_produccion", lazy=True)
+
+    @property
+    def ProduccionActual(self):
+        if not self.producciones:
+            return None
+        return max(self.producciones, key=lambda produccion: produccion.IdProduccion or 0)
+
+    @property
+    def EstadoProduccionHistorial(self):
+        produccion = self.ProduccionActual
+        if produccion is not None:
+            return produccion.Estado or "Sin estado"
+
+        estado_solicitud = (self.Estado or "").strip()
+        if estado_solicitud == "PENDIENTE":
+            return "Pendiente de aprobacion"
+        if estado_solicitud == "Rechazada":
+            return "Solicitud rechazada"
+        if estado_solicitud == "Aprobada":
+            return "Pendiente de programacion"
+        return estado_solicitud or "Sin produccion"
 
 
 class Produccion(BaseModel):
@@ -683,6 +706,7 @@ class Venta(BaseModel):
         foreign_keys=[IdUsuarioRegistro], uselist=False,
     )
     detalles = db.relationship("VentaDetalle", back_populates="venta", lazy=True)
+    solicitudes_produccion = db.relationship("SolicitudProduccion", back_populates="venta", lazy=True)
 
     @property
     def TotalVenta(self):
