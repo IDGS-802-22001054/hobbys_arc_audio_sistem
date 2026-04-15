@@ -45,7 +45,7 @@
                     <label>Contraseña</label>
                     <input class="form-input" type="password" name="password" placeholder="••••••••">
                 </div>
-                <a class="forgot-link" href="#">¿Olvidaste tu contraseña?</a>
+                <a class="forgot-link" href="{{ url_for('auth.recuperar_paso1') }}">¿Olvidaste tu contraseña?</a>
                 <button type="submit" class="btn-primary">INGRESAR AL SISTEMA</button>
             </form>
 

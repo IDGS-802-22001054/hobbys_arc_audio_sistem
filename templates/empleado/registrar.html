@@ -112,21 +112,20 @@
                 <i class="ph ph-lock-key"></i> Acceso al Sistema
             </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    {{ form.identificador.label(class="form-label") }}
-                    {{ form.identificador(class="form-input", placeholder="Ingrese un nombre de usuario") }}
-                </div>
-                <div class="form-group">
-                    {{ form.password.label(class="form-label") }}
-                    {{ form.password(class="form-input", placeholder="Ingrese una contrasena") }}
-                </div>
+            <div style="padding: 0.75rem 1rem; background: var(--color-background-secondary); 
+                border-radius: 8px; margin-bottom: 1rem; 
+                border-left: 3px solid var(--color-border-secondary);">
+                <p style="margin: 0; font-size: 0.875rem; color: var(--color-text-secondary);">
+                    <i class="ph ph-info"></i>
+                    El <strong>usuario</strong> y la <strong>contraseña</strong> se generarán
+                    automáticamente al guardar. Se enviarán al correo del empleado.
+                </p>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Rol</label>
                 <select name="id_rol" class="form-input">
-                    <option value="">- Sin rol -</option>
+                    <option value="">— Sin rol —</option>
                     {% for rol in roles %}
                     <option value="{{ rol.IdRol }}">{{ rol.Nombre }}</option>
                     {% endfor %}

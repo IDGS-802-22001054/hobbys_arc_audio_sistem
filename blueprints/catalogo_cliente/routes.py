@@ -436,6 +436,7 @@ def _resolver_tarjeta_checkout(cliente, form_data):
 
 
 @catalogo_cliente_bp.before_request
+@login_required
 def _proteger_catalogo_cliente():
     if request.endpoint not in ENDPOINTS_CATALOGO_PROTEGIDOS:
         return None
@@ -472,12 +473,14 @@ def obtener_contexto_catalogo(busqueda=""):
 
 
 @catalogo_cliente_bp.route("/catalogo")
+@login_required
 def catalogo():
     busqueda = request.args.get("q", "").strip()
     return render_template("catalogo/catalogo.html", **obtener_contexto_catalogo(busqueda))
 
 
 @catalogo_cliente_bp.route("/catalogo/checkout")
+@login_required
 def checkout():
     busqueda = request.args.get("q", "").strip()
     carrito = _normalizar_carrito()
@@ -489,6 +492,7 @@ def checkout():
 
 
 @catalogo_cliente_bp.post("/catalogo/carrito/agregar")
+@login_required
 def agregar_al_carrito():
     busqueda = request.form.get("q", "").strip()
     producto_id = request.form.get("producto_id", type=int)
@@ -540,6 +544,7 @@ def agregar_al_carrito():
 
 
 @catalogo_cliente_bp.post("/catalogo/carrito/actualizar")
+@login_required
 def actualizar_carrito():
     busqueda = request.form.get("q", "").strip()
     producto_id = request.form.get("producto_id", type=int)

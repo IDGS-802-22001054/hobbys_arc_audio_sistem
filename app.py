@@ -1,3 +1,15 @@
+<<<<<<< IDGS-802-23002412
+from flask import Flask, render_template, redirect, url_for, request
+from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
+from flask_login import LoginManager, current_user, logout_user
+from config import DevelopmentConfig
+from models import db, Usuario, SolicitudProduccion
+from sqlalchemy import text
+from extensions import mail
+
+from blueprints.produccion.routes_produccion import produccion_bp
+=======
 from datetime import date, datetime, timedelta
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -8,6 +20,7 @@ from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import text
 
 from blueprints.auth.routes_auth import auth_bp
+>>>>>>> main
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.clientes.routes_cliente import clientes_bp
 from blueprints.compras import compras_bp
@@ -18,8 +31,19 @@ from blueprints.empleados.routes_empleado import empleados_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.proveedores import proveedores_bp
+<<<<<<< IDGS-802-23002412
+from blueprints.costos_utilidades.cu_routes import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
+from blueprints.dashboard.routes_dashboard import dashboard_bp
+from blueprints.clientes.routes_cliente import clientes_bp
+from blueprints.auth.routes_auth import auth_bp
+from blueprints.empleados.routes_empleado import empleados_bp
+
+=======
+from blueprints.stock_empleado import stock_empleado_bp
+from blueprints.ventas import ventas_bp
+>>>>>>> main
 from config import DevelopmentConfig
 from models import CorteVentaDiario, SesionUsuario, SolicitudProduccion, Usuario, db
 from services.configuracion import (
@@ -222,7 +246,15 @@ def crear_app():
     aplicacion = Flask(__name__)
     aplicacion.config.from_object(DevelopmentConfig)
 
+    aplicacion.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    aplicacion.config['MAIL_PORT'] = 587
+    aplicacion.config['MAIL_USE_TLS'] = True
+    aplicacion.config['MAIL_USERNAME'] = 'dannabr564@gmail.com'
+    aplicacion.config['MAIL_PASSWORD'] = 'pxtozmsewsbblrzu'
+    aplicacion.config['MAIL_DEFAULT_SENDER'] = ('Hobbys Car Audio', 'dannabr564@gmail.com')
+
     db.init_app(aplicacion)
+    mail.init_app(aplicacion)
     migracion.init_app(aplicacion, db)
     proteccion_csrf.init_app(aplicacion)
     login_manager.init_app(aplicacion)
@@ -242,9 +274,14 @@ def crear_app():
 
     return aplicacion
 
+    @app.after_request
+    def no_cache(response):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 app = crear_app()
-
 
 if __name__ == "__main__":
     app.run(debug=app.config.get("DEBUG", True))

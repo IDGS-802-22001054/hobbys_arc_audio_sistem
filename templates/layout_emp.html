@@ -106,7 +106,7 @@
                     <span class="page-title">{% block page_title %}{% endblock %}</span>
                 </div>
                 <div class="topbar-right">
-                    <span class="date-chip">$</span>
+                    <span class="date-chip">{{ (current_user.persona.Nombre + current_user.persona.Apellidos) | upper }}</span>
 
                     <div class="notif-container">
                         <input type="checkbox" id="notif-toggle" style="display: none;">

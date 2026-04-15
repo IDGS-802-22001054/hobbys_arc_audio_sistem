@@ -54,10 +54,10 @@
                     <span class="page-title">{% block page_title %}{% endblock %}</span>
                 </div>
                 <div class="topbar-right">
-                    <span class="date-chip">Cliente</span>
+                    <span class="date-chip">{{ (current_user.persona.Nombre + current_user.persona.Apellidos) | upper }}</span>
                     <div class="icon-btn">
-                        <i class="ph ph-bell"></i>
-                        <span class="notif-badge">#</span>
+                        <i class="ph ph-bell"> </i>
+                        <span class="notif-badge"></span>
                     </div>
                     <a href="{{ url_for('clientes.editar_perfil') }}" class="topbar-avatar"
                         style="background:linear-gradient(135deg,var(--blue),var(--green))"
