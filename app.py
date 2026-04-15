@@ -1,15 +1,3 @@
-<<<<<<< IDGS-802-23002412
-from flask import Flask, render_template, redirect, url_for, request
-from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
-from flask_login import LoginManager, current_user, logout_user
-from config import DevelopmentConfig
-from models import db, Usuario, SolicitudProduccion
-from sqlalchemy import text
-from extensions import mail
-
-from blueprints.produccion.routes_produccion import produccion_bp
-=======
 from datetime import date, datetime, timedelta
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -20,7 +8,6 @@ from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import text
 
 from blueprints.auth.routes_auth import auth_bp
->>>>>>> main
 from blueprints.catalogo_cliente import catalogo_cliente_bp
 from blueprints.clientes.routes_cliente import clientes_bp
 from blueprints.compras import compras_bp
@@ -31,7 +18,6 @@ from blueprints.empleados.routes_empleado import empleados_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.proveedores import proveedores_bp
-<<<<<<< IDGS-802-23002412
 from blueprints.costos_utilidades.cu_routes import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
@@ -40,10 +26,6 @@ from blueprints.clientes.routes_cliente import clientes_bp
 from blueprints.auth.routes_auth import auth_bp
 from blueprints.empleados.routes_empleado import empleados_bp
 
-=======
-from blueprints.stock_empleado import stock_empleado_bp
-from blueprints.ventas import ventas_bp
->>>>>>> main
 from config import DevelopmentConfig
 from models import CorteVentaDiario, SesionUsuario, SolicitudProduccion, Usuario, db
 from services.configuracion import (
