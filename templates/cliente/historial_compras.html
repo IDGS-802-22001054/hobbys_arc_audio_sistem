@@ -88,6 +88,56 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if venta.solicitudes_produccion %}
+            <div style="margin-top:16px;">
+                <div class="detail-section-title">
+                    <i class="ph ph-factory"></i> Produccion pendiente por falta de stock
+                </div>
+                <div style="overflow-x:auto; border:1px solid var(--border); border-radius:16px; margin-top:10px;">
+                    <table style="width:100%; border-collapse:collapse;">
+                        <thead style="background:var(--card2);">
+                            <tr>
+                                <th style="text-align:left; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Solicitud</th>
+                                <th style="text-align:left; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Producto</th>
+                                <th style="text-align:center; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Cantidad</th>
+                                <th style="text-align:center; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Estado solicitud</th>
+                                <th style="text-align:center; padding:14px 16px; font-size:12px; text-transform:uppercase; color:var(--muted2);">Estado produccion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitud in venta.solicitudes_produccion|sort(attribute='IdSolicitudProduccion') %}
+                            {% set produccion = solicitud.ProduccionActual %}
+                            <tr style="border-top:1px solid var(--border);">
+                                <td style="padding:14px 16px; color:var(--text); font-weight:700;">
+                                    #{{ solicitud.IdSolicitudProduccion }}
+                                </td>
+                                <td style="padding:14px 16px; color:var(--text); font-weight:600;">
+                                    {{ solicitud.producto_terminado.Nombre if solicitud.producto_terminado else 'Producto eliminado' }}
+                                </td>
+                                <td style="padding:14px 16px; color:var(--text); text-align:center;">{{ solicitud.CantidadSolicitada }}</td>
+                                <td style="padding:14px 16px; text-align:center;">
+                                    <span class="badge {% if solicitud.Estado == 'Rechazada' %}badge-red{% elif solicitud.Estado == 'Aprobada' %}badge-green{% else %}badge-yellow{% endif %}">
+                                        {{ solicitud.Estado }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px; text-align:center;">
+                                    <span class="badge {% if solicitud.EstadoProduccionHistorial in ['Cancelada', 'Rechazada'] %}badge-red{% elif solicitud.EstadoProduccionHistorial in ['Completada', 'Finalizada', 'Aprobada'] %}badge-green{% else %}badge-yellow{% endif %}">
+                                        {{ solicitud.EstadoProduccionHistorial }}
+                                    </span>
+                                    {% if produccion %}
+                                    <div style="font-size:12px; color:var(--muted2); margin-top:6px;">
+                                        Produccion #{{ produccion.IdProduccion }}
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </details>
     {% else %}

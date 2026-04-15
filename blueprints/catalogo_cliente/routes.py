@@ -638,7 +638,7 @@ def realizar_compra():
             return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
 
         if carrito_compra or carrito_solicitud:
-            registrar_venta_catalogo_cliente(
+            venta = registrar_venta_catalogo_cliente(
                 id_cliente=cliente.IdCliente,
                 id_usuario=usuario.IdUsuario,
                 metodo_pago="TARJETA",
@@ -646,6 +646,8 @@ def realizar_compra():
                 carrito_con_stock=carrito_compra,
             )
             venta_registrada = True
+        else:
+            venta = None
 
         try:
             persona = cliente.persona
@@ -683,6 +685,7 @@ def realizar_compra():
 
                 db.session.add(
                     SolicitudProduccion(
+                        IdVenta=venta.IdVenta if venta is not None else None,
                         IdProductoTerminado=producto_id,
                         CantidadSolicitada=min(int(cantidad), MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA),
                         Motivo=(

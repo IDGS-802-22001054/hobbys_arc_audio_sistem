@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from datetime import datetime
 from decimal import Decimal
-from models import db, Usuario, SesionUsuario, Cliente, Rol, Venta, VentaDetalle
+from models import db, Usuario, SesionUsuario, Cliente, Rol, Venta, VentaDetalle, SolicitudProduccion
 from forms import LoginForm, ClienteForm
 from flask_mail import Message
 from extensions import mail
@@ -367,7 +367,9 @@ def historial_compras():
     ventas = (
         db.session.query(Venta)
         .options(
-            joinedload(Venta.detalles).joinedload(VentaDetalle.producto_terminado)
+            joinedload(Venta.detalles).joinedload(VentaDetalle.producto_terminado),
+            joinedload(Venta.solicitudes_produccion).joinedload(SolicitudProduccion.producto_terminado),
+            joinedload(Venta.solicitudes_produccion).joinedload(SolicitudProduccion.producciones),
         )
         .filter(Venta.IdCliente == cliente.IdCliente)
         .order_by(Venta.FechaVenta.desc(), Venta.IdVenta.desc())

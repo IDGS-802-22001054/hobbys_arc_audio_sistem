@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from models import AlertaSistema, Produccion, SolicitudProduccion, db
 from services.produccion import (
@@ -35,6 +36,16 @@ def _usuario_es_administrador():
 def _mensaje_indica_falta_material(mensaje):
     texto = (mensaje or '').lower()
     return 'insuficiente' in texto and ('materia' in texto or 'stock' in texto)
+
+
+def _extraer_mensaje_bd(error):
+    original = getattr(error, 'orig', None)
+    argumentos = getattr(original, 'args', None)
+    if argumentos:
+        if len(argumentos) > 1:
+            return str(argumentos[1])
+        return str(argumentos[0])
+    return str(error)
 
 @produccion_bp.route('/produccion')
 @login_required
@@ -202,16 +213,21 @@ def registrar_defectos(id: int):
             flash('La cantidad de defectos debe ser mayor a 0.', 'warning')
             return redirect(url_for('produccion.registrar_defectos', id=id))
 
-        db.session.execute(
-            text('CALL SP_Produccion_RegistrarDefecto(:id_produccion, :cantidad, :descripcion, :id_usuario)'),
-            {
-                'id_produccion': id,
-                'cantidad': cantidad,
-                'descripcion': descripcion or None,
-                'id_usuario': current_user.IdUsuario,
-            }
-        )
-        db.session.commit()
+        try:
+            db.session.execute(
+                text('CALL SP_Produccion_RegistrarDefecto(:id_produccion, :cantidad, :descripcion, :id_usuario)'),
+                {
+                    'id_produccion': id,
+                    'cantidad': cantidad,
+                    'descripcion': descripcion or None,
+                    'id_usuario': current_user.IdUsuario,
+                }
+            )
+            db.session.commit()
+        except SQLAlchemyError as error:
+            db.session.rollback()
+            flash(_extraer_mensaje_bd(error), 'danger')
+            return redirect(url_for('produccion.registrar_defectos', id=id))
 
         flash(f'{cantidad} pieza(s) defectuosa(s) registrada(s).', 'success')
         return redirect(url_for('produccion.produccion'))

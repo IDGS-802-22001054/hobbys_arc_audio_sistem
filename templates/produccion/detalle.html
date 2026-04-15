@@ -85,9 +85,10 @@
 
 </div>
 
-{% if prod.CantidadPlaneada > 0 and prod.Estado == 'Completada' %}
-{% set pct_buenas      = ((prod.CantidadFabricada  / prod.CantidadPlaneada) * 100) | round(1) %}
-{% set pct_defectuosas = ((prod.CantidadDefectuosa / prod.CantidadPlaneada) * 100) | round(1) %}
+{% if prod.CantidadFabricada > 0 and prod.Estado == 'Completada' %}
+{% set piezas_buenas = (prod.CantidadFabricada - prod.CantidadDefectuosa) %}
+{% set pct_buenas = ((piezas_buenas / prod.CantidadFabricada) * 100) | round(1) %}
+{% set pct_defectuosas = ((prod.CantidadDefectuosa / prod.CantidadFabricada) * 100) | round(1) %}
 <div class="eficiencia-wrap fade-up">
     <div class="eficiencia-header">
         <span class="eficiencia-lbl">Eficiencia de producción</span>
