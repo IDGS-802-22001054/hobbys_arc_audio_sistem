@@ -7,8 +7,8 @@
     <title>Hobbys Car Audio – Crear Cuenta</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/verificacion.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/verificacion.css') }}">
 </head>
 
 <body>
@@ -26,9 +26,13 @@
                     <div class="login-desc">Ingresa tus datos personales para continuar.</div>
 
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% for category, message in messages %}
-                    <div class="flash-inline {{ category }}">{{ message }}</div>
-                    {% endfor %}
+                    {% if messages %}
+                    <div class="flash-container">
+                        {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     {% endwith %}
 
                     <form method="POST" action="{{ url_for('clientes.nuevo_cliente') }}" novalidate>

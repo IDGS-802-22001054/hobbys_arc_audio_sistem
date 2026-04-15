@@ -493,45 +493,6 @@ textarea {
     margin-left: auto;
 }
 
-.search-wrap {
-    position: relative;
-    width: 100%;
-}
-
-.search-wrap i {
-    position: absolute;
-    right: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 15px;
-    color: var(--muted2);
-    pointer-events: none;
-}
-
-.search-input {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 8px 34px 8px 13px;
-    color: var(--text);
-    font-family: var(--font-b);
-    font-size: 12.5px;
-    font-weight: 700;
-    outline: none;
-    width: 220px;
-    transition: border-color var(--t), background var(--t);
-}
-
-.search-input::placeholder {
-    color: var(--muted2);
-    font-weight: 600;
-}
-
-.search-input:focus {
-    border-color: var(--blue);
-    background: var(--card);
-}
-
 .table-card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -650,7 +611,7 @@ textarea {
     text-align: left;
     font-size: 12px;
     font-family: Nunito;
-    font-weight: 900;
+    font-weight: normal;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 1px;

@@ -3,8 +3,12 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import text
-
 from models import SolicitudProduccion, db
+
+from services.configuracion import (
+    alertas_materia_prima_habilitadas,
+    alertas_pocas_piezas_habilitadas,
+)
 from services.produccion import asegurar_produccion_aprobada
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -28,6 +32,7 @@ def _formatear_etiqueta(row, periodo):
         fmt = row.Etiqueta.strftime('%a %d')
         dia, num = fmt.split(' ')
         return f"{DIAS_ES.get(dia, dia)} {num}"
+
     if periodo == 'mes':
         fmt = row.FechaInicioSemana.strftime('%d %b')
         num, mes = fmt.split(' ')
@@ -54,8 +59,8 @@ def dashboard():
         text('CALL SP_Dashboard_KPIsHoy()')
     ).fetchone()
 
-    venta_total = float(kpis.VentaTotal) if kpis and kpis.VentaTotal else 0.0
-    utilidad_total = float(kpis.UtilidadTotal) if kpis and kpis.UtilidadTotal else 0.0
+    venta_total = float(kpis.VentaTotal or 0)
+    utilidad_total = float(kpis.UtilidadTotal or 0)
 
     top_ganancia_actual = db.session.execute(
         text('CALL SP_Dashboard_TopGananciaSemanaActual()')
@@ -73,19 +78,24 @@ def dashboard():
         text('CALL SP_Dashboard_TopUnidadesSemanaAnterior()')
     ).fetchone()
 
-    alertas_stock = db.session.execute(
-        text('CALL SP_Dashboard_AlertasStockProducto()')
-    ).fetchall()
+    alertas_stock = []
+    if alertas_pocas_piezas_habilitadas():
+        alertas_stock = db.session.execute(
+            text('CALL SP_Dashboard_AlertasStockProducto()')
+        ).fetchall()
 
-    alertas_mp = db.session.execute(
-        text('CALL SP_Dashboard_AlertasStockMateriaPrima()')
-    ).fetchall()
+    alertas_mp = []
+    if alertas_materia_prima_habilitadas():
+        alertas_mp = db.session.execute(
+            text('CALL SP_Dashboard_AlertasStockMateriaPrima()')
+        ).fetchall()
 
     sp_map = {
         'semana': 'CALL SP_Dashboard_GraficaSemana()',
         'mes': 'CALL SP_Dashboard_GraficaMes()',
         'anio': 'CALL SP_Dashboard_GraficaAnio()',
     }
+
     filas_grafica = db.session.execute(
         text(sp_map[periodo])
     ).fetchall()
@@ -93,23 +103,43 @@ def dashboard():
     datos_grafica = [
         {
             'etiqueta': _formatear_etiqueta(row, periodo),
-            'ventas': float(row.Ventas),
-            'utilidad': float(row.Utilidad),
+            'ventas': float(row.Ventas or 0),
+            'utilidad': float(row.Utilidad or 0),
         }
         for row in filas_grafica
+    ]
+
+    defectos = db.session.execute(
+        text('CALL SP_Dashboard_Defectos()')
+    ).fetchall()
+
+    datos_defectos = [
+        {
+            'etiqueta': row.Etiqueta.strftime('%d/%m') if row.Etiqueta else '',
+            'alto': int(row.Alto or 0),
+            'medio': int(row.Medio or 0),
+            'bajo': int(row.Bajo or 0),
+            'porcentaje': float(row.PorcentajeDefectos or 0)
+        }
+        for row in defectos
     ]
 
     return render_template(
         'dashboard/dashboard.html',
         venta_total=venta_total,
         utilidad_total=utilidad_total,
+
         top_ganancia_actual=top_ganancia_actual,
         top_unidades_actual=top_unidades_actual,
         top_ganancia_anterior=top_ganancia_anterior,
         top_unidades_anterior=top_unidades_anterior,
+
         alertas_stock=alertas_stock,
         alertas_mp=alertas_mp,
+
         datos_grafica=datos_grafica,
+        datos_defectos=datos_defectos,
+
         periodo=periodo,
     )
 
@@ -121,7 +151,7 @@ def solicitar_reabastecimiento():
     cantidad = request.form.get('cantidad', type=int, default=1)
 
     if not id_producto or cantidad <= 0:
-        flash('Datos invalidos para la solicitud.', 'warning')
+        flash('Datos inválidos.', 'warning')
         return redirect(url_for('dashboard.dashboard'))
 
     es_admin = _usuario_es_administrador()
@@ -131,7 +161,7 @@ def solicitar_reabastecimiento():
         {
             'id_producto': id_producto,
             'cantidad': cantidad,
-            'motivo': 'Reabastecimiento automatico desde dashboard (stock bajo)',
+            'motivo': 'Reabastecimiento automático desde dashboard',
             'id_usuario': current_user.IdUsuario,
         }
     )
@@ -151,14 +181,16 @@ def solicitar_reabastecimiento():
             solicitud.Estado = 'Aprobada'
             solicitud.IdUsuarioAprueba = current_user.IdUsuario
             solicitud.FechaAprobacion = datetime.now()
-            solicitud.ObservacionesAprobacion = 'Aprobacion automatica por administrador desde dashboard'
+            solicitud.ObservacionesAprobacion = 'Aprobación automática desde dashboard'
 
             asegurar_produccion_aprobada(solicitud, current_user.IdUsuario)
 
     db.session.commit()
 
-    if es_admin:
-        flash('Solicitud de reabastecimiento generada y aprobada automaticamente.', 'success')
-    else:
-        flash('Solicitud de reabastecimiento generada correctamente.', 'success')
+    flash(
+        'Solicitud generada correctamente.' if not es_admin
+        else 'Solicitud generada y aprobada automáticamente.',
+        'success'
+    )
+
     return redirect(url_for('dashboard.dashboard'))

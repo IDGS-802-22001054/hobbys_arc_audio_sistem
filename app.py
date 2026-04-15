@@ -1,40 +1,42 @@
-from flask import Flask, render_template, redirect, url_for, request
-from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
+from datetime import date, datetime, timedelta
+
+from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask_apscheduler import APScheduler
 from flask_login import LoginManager, current_user, logout_user
 from config import DevelopmentConfig
-from models import db, Usuario, SolicitudProduccion
+from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import text
 from extensions import mail
 
-from blueprints.produccion.routes_produccion import produccion_bp
+from blueprints.auth.routes_auth import auth_bp
 from blueprints.catalogo_cliente import catalogo_cliente_bp
+from blueprints.clientes.routes_cliente import clientes_bp
 from blueprints.compras import compras_bp
-from blueprints.ventas.routes import ventas_bp
+from blueprints.configuracion_sistema import configuracion_sistema_bp
+from blueprints.costos_utilidades import costos_utilidades_bp
+from blueprints.dashboard.routes_dashboard import dashboard_bp
+from blueprints.empleados.routes_empleado import empleados_bp
 from blueprints.materia_prima import materia_prima_bp
+from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.proveedores import proveedores_bp
-from blueprints.costos_utilidades.cu_routes import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
-from blueprints.dashboard.routes_dashboard import dashboard_bp
-from blueprints.clientes.routes_cliente import clientes_bp
-from blueprints.auth.routes_auth import auth_bp
-from blueprints.empleados.routes_empleado import empleados_bp
+from blueprints.pagina.pagina_routes import publico_bp
 
-from config import DevelopmentConfig
-from models import db, Usuario
-from models import db, CorteVentaDiario
-from flask import session
-from sqlalchemy import text
-from flask_apscheduler import APScheduler
-from datetime import date, timedelta
+from models import CorteVentaDiario, SesionUsuario, Usuario, db
+
+from services.configuracion import (
+    alertas_materia_prima_habilitadas,
+    obtener_duracion_inactividad_sesion,
+    obtener_milisegundos_inactividad_sesion,
+)
 
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
 scheduler = APScheduler()
 
 login_manager = LoginManager()
-
 login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Inicia sesión para continuar'
 login_manager.login_message_category = 'warning'
@@ -44,65 +46,186 @@ login_manager.login_message_category = 'warning'
 def load_user(user_id):
     return db.session.get(Usuario, int(user_id))
 
-def realizar_corte_automatico(aplicacion):
-    with aplicacion.app_context():
+
+def realizar_corte_automatico(app):
+    with app.app_context():
         ayer = date.today() - timedelta(days=1)
         existe = CorteVentaDiario.query.filter_by(FechaCorte=ayer).first()
         if not existe:
-            nuevo_corte = CorteVentaDiario(
+            db.session.add(CorteVentaDiario(
                 FechaCorte=ayer,
-                IdUsuarioRegistro=1 
-            )
-            db.session.add(nuevo_corte)
+                IdUsuarioRegistro=1,
+            ))
             db.session.commit()
 
-def inicializar_base_datos(aplicacion):
-    with aplicacion.app_context():
+
+def inicializar_base_datos(app):
+    with app.app_context():
         db.metadata.tables
 
 
-def registrar_blueprints(aplicacion):
-    aplicacion.register_blueprint(catalogo_cliente_bp)
-    aplicacion.register_blueprint(stock_empleado_bp)
-    aplicacion.register_blueprint(proveedores_bp)
-    aplicacion.register_blueprint(materia_prima_bp)
-    aplicacion.register_blueprint(compras_bp)
-    aplicacion.register_blueprint(costos_utilidades_bp)
-    aplicacion.register_blueprint(ventas_bp)
-    aplicacion.register_blueprint(dashboard_bp)
-    aplicacion.register_blueprint(auth_bp)
-    aplicacion.register_blueprint(empleados_bp)
-    aplicacion.register_blueprint(clientes_bp)
-    aplicacion.register_blueprint(produccion_bp)
+def registrar_blueprints(app):
+    app.register_blueprint(catalogo_cliente_bp)
+    app.register_blueprint(stock_empleado_bp)
+    app.register_blueprint(proveedores_bp)
+    app.register_blueprint(materia_prima_bp)
+    app.register_blueprint(compras_bp)
+    app.register_blueprint(costos_utilidades_bp)
+    app.register_blueprint(configuracion_sistema_bp)
+    app.register_blueprint(ventas_bp)
+    app.register_blueprint(dashboard_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(empleados_bp)
+    app.register_blueprint(clientes_bp)
+    app.register_blueprint(produccion_bp)
+    app.register_blueprint(publico_bp)
 
 
-def registrar_manejadores_error(aplicacion):
-    @aplicacion.errorhandler(404)
+def registrar_manejadores_error(app):
+    @app.errorhandler(404)
     def pagina_no_encontrada(error):
         return render_template("index.html"), 404
 
+
+def crear_app():
+    app = Flask(__name__)
+    app.config.from_object(DevelopmentConfig)
+
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = 'dannabr564@gmail.com'
+    app.config['MAIL_PASSWORD'] = 'pxtozmsewsbblrzu'
+    app.config['MAIL_DEFAULT_SENDER'] = ('Hobbys Car Audio', 'dannabr564@gmail.com')
+
+    db.init_app(app)
+    mail.init_app(app)
+    migracion.init_app(app, db)
+    proteccion_csrf.init_app(app)
+    login_manager.init_app(app)
+    scheduler.init_app(app)
+
+    @app.after_request
+    def no_cache(response):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+    @scheduler.task('cron', id='corte_diario_job', hour=0, minute=0)
+    def job_corte():
+        realizar_corte_automatico(app)
+
+    scheduler.start()
+
+    inicializar_base_datos(app)
+    registrar_blueprints(app)
+    registrar_manejadores_error(app)
+    registrar_manejadores_sesion(app)
+    registrar_context_processors(app)
+
+    return app
+
+def registrar_manejadores_sesion(app):
+
+    def obtener_sesion():
+        id_sesion = session.get('id_sesion_usuario')
+        if id_sesion:
+            sesion = db.session.get(SesionUsuario, id_sesion)
+            if sesion and sesion.Activa and sesion.IdUsuario == current_user.IdUsuario:
+                return sesion
+
+        return (
+            db.session.query(SesionUsuario)
+            .filter_by(IdUsuario=current_user.IdUsuario, Activa=True)
+            .order_by(SesionUsuario.FechaInicio.desc())
+            .first()
+        )
+
+    @app.before_request
+    def validar_sesion():
+        if not current_user.is_authenticated:
+            return None
+
+        if request.endpoint in (None, 'static'):
+            return None
+
+        sesion = obtener_sesion()
+
+        if not sesion:
+            session.clear()
+            logout_user()
+            flash("Tu sesión ya no está activa.", "warning")
+            return redirect(url_for("auth.login"))
+
+        ahora = datetime.now()
+        limite = obtener_duracion_inactividad_sesion()
+
+        if sesion.FechaUltimaActividad and (ahora - sesion.FechaUltimaActividad > limite):
+            sesion.Activa = False
+            sesion.FechaCierre = ahora
+            sesion.MotivoCierre = "inactividad"
+
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+
+            session.clear()
+            logout_user()
+            flash("Sesión cerrada por inactividad.", "warning")
+            return redirect(url_for("auth.login"))
+
+        if not sesion.FechaUltimaActividad or (ahora - sesion.FechaUltimaActividad > timedelta(minutes=1)):
+            sesion.FechaUltimaActividad = ahora
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+
+        session['id_sesion_usuario'] = sesion.IdSesionUsuario
+        return None
 
 def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
         alertas = []
         solicitudes_pendientes = []
+        alertas_mp_habilitadas = alertas_materia_prima_habilitadas()
+
         rol_actual = (
             getattr(getattr(current_user, 'rol', None), 'Nombre', '')
             if getattr(current_user, 'is_authenticated', False)
             else ''
         )
+
         es_admin = rol_actual == 'Administrador'
         es_autorizado = rol_actual in ['Administrador', 'Almacenista']
 
-        if es_autorizado:
+        if es_autorizado and alertas_mp_habilitadas:
             query = text("""
-                SELECT IdAlertaSistema, Mensaje, ReferenciaId
+                SELECT IdAlertaSistema, Mensaje, ReferenciaId, TipoAlerta
                 FROM alertasistema
                 WHERE Leida = 0 AND TipoAlerta = 'STOCK_BAJO'
                 ORDER BY FechaGeneracion DESC
             """)
-            alertas = db.session.execute(query).fetchall()
+            alertas = list(db.session.execute(query).fetchall())
+
+        if es_admin and alertas_mp_habilitadas:
+            query_alertas_produccion = text("""
+                SELECT IdAlertaSistema, Mensaje, ReferenciaId, TipoAlerta
+                FROM alertasistema
+                WHERE Leida = 0
+                  AND TipoAlerta = 'MATERIAL_INSUFICIENTE'
+                  AND IdUsuarioDestino = :id_usuario
+                ORDER BY FechaGeneracion DESC
+            """)
+            alertas.extend(
+                db.session.execute(
+                    query_alertas_produccion,
+                    {'id_usuario': current_user.IdUsuario},
+                ).fetchall()
+            )
 
         if es_admin:
             query_solicitudes = text("""
@@ -131,48 +254,8 @@ def registrar_context_processors(aplicacion):
             total_alertas=len(alertas) + len(solicitudes_pendientes),
             puede_ver_alertas=es_autorizado,
             puede_aprobar_solicitudes=es_admin,
+            inactividad_timeout_ms=obtener_milisegundos_inactividad_sesion(),
         )
-
-
-def crear_app():
-    aplicacion = Flask(__name__)
-    aplicacion.config.from_object(DevelopmentConfig)
-
-    aplicacion.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    aplicacion.config['MAIL_PORT'] = 587
-    aplicacion.config['MAIL_USE_TLS'] = True
-    aplicacion.config['MAIL_USERNAME'] = 'dannabr564@gmail.com'
-    aplicacion.config['MAIL_PASSWORD'] = 'pxtozmsewsbblrzu'
-    aplicacion.config['MAIL_DEFAULT_SENDER'] = ('Hobbys Car Audio', 'dannabr564@gmail.com')
-
-    db.init_app(aplicacion)
-    mail.init_app(aplicacion)
-    migracion.init_app(aplicacion, db)
-    proteccion_csrf.init_app(aplicacion)
-    login_manager.init_app(aplicacion)
-    scheduler.init_app(aplicacion)
-    
-    @scheduler.task('cron', id='corte_diario_job', hour=0, minute=0)
-    def job_corte():
-        realizar_corte_automatico(aplicacion)
-        
-    scheduler.start()
-
-    login_manager.init_app(aplicacion)
-
-    inicializar_base_datos(aplicacion)
-    registrar_blueprints(aplicacion)
-    registrar_manejadores_error(aplicacion)
-    registrar_context_processors(aplicacion)
-
-    return aplicacion
-
-    @app.after_request
-    def no_cache(response):
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-    return response
 
 app = crear_app()
 

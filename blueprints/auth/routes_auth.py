@@ -75,17 +75,17 @@ def login():
 
         if not usuario or not check_password_hash(usuario.PasswordHash, password):
             flash('Nombre de usuario o contraseña incorrectos', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         if not usuario.Activo:
             flash('Tu cuenta está desactivada, contacta al administrador', 'warning')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         destino = _obtener_destino_por_rol(usuario)
 
         if not destino:
             flash('Rol no reconocido, contacta al administrador', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         usuario.FechaUltimoAcceso = datetime.now()
 
@@ -102,20 +102,32 @@ def login():
         except Exception:
             db.session.rollback()
             flash('Error interno al iniciar sesión, intenta de nuevo', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
+        session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
         login_user(usuario, remember=False)
         return redirect(url_for(destino))
 
-    return render_template('index.html', form=form)
+    return render_template('auth/login.html', form=form)
 
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    sesion_activa = db.session.query(SesionUsuario).filter_by(
-        IdUsuario=current_user.IdUsuario,
-        Activa=True
-    ).order_by(SesionUsuario.FechaInicio.desc()).first()
+    id_sesion = session.get('id_sesion_usuario')
+    sesion_activa = None
+
+    if id_sesion:
+        sesion_activa = db.session.get(SesionUsuario, id_sesion)
+        if sesion_activa and (
+            sesion_activa.IdUsuario != current_user.IdUsuario or not sesion_activa.Activa
+        ):
+            sesion_activa = None
+
+    if sesion_activa is None:
+        sesion_activa = db.session.query(SesionUsuario).filter_by(
+            IdUsuario=current_user.IdUsuario,
+            Activa=True
+        ).order_by(SesionUsuario.FechaInicio.desc()).first()
 
     if sesion_activa:
         sesion_activa.Activa = False
@@ -126,6 +138,7 @@ def logout():
         except Exception:
             db.session.rollback()
 
+    session.pop('id_sesion_usuario', None)
     logout_user()
     session.clear()
     return redirect(url_for('auth.login'))

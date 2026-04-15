@@ -86,7 +86,6 @@ def _enviar_codigo_verificacion(correo: str, codigo: str, nombre: str):
         return False
 
 @clientes_bp.route('/nuevo', methods=['GET', 'POST'])
-@login_required
 def nuevo_cliente():
     form = forms.ClienteForm(request.form)
 
@@ -235,7 +234,6 @@ def _enmascarar_correo(correo: str) -> str:
     return usuario[:2] + '*' * (len(usuario) - 2) + '@' + dominio
 
 @clientes_bp.route('/reenviar-codigo', methods=['POST'])
-@login_required
 def reenviar_codigo():
     from flask import jsonify
     datos = session.get('verificacion')

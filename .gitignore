@@ -2,3 +2,5 @@
 .venv/
 __pycache__/
 *.pyc
+/blueprints/empleados/__pycache__
+/blueprints/ventas/__pycache__
