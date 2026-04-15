@@ -20,6 +20,7 @@ from blueprints.empleados.routes_empleado import empleados_bp
 from blueprints.materia_prima import materia_prima_bp
 from blueprints.produccion.routes_produccion import produccion_bp
 from blueprints.proveedores import proveedores_bp
+from blueprints.costos_utilidades.cu_routes import costos_utilidades_bp
 from blueprints.stock_empleado import stock_empleado_bp
 from blueprints.ventas import ventas_bp
 from blueprints.pagina.pagina_routes import publico_bp
