@@ -20,9 +20,6 @@
         </div>
 
         <div class="detail-card">
-            <div class="stock-status {% if producto.activo %}is-active{% else %}is-inactive{% endif %}">
-                {{ "Activo" if producto.activo else "Inactivo" }}
-            </div>
             <h1>{{ producto.nombre }}</h1>
             <p>{{ producto.descripcion }}</p>
 
@@ -43,6 +40,10 @@
                     <span>Precio de venta</span>
                     <strong>${{ "%.2f"|format(producto.precio_venta) }}</strong>
                 </div>
+            </div>
+
+            <div class="stock-status {% if producto.activo %}is-active{% else %}is-inactive{% endif %}">
+                {{ "Activo" if producto.activo else "Inactivo" }}
             </div>
 
             <div class="detail-actions">

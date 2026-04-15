@@ -471,7 +471,22 @@ body {
     color: var(--text);
 }
 
-/* Registro Cliente */
+.flash-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flash-message {
+    background: rgba(26, 79, 196, 0.15);
+    border: 1px solid rgba(26, 79, 196, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text);
+}
+
 .reg-bg {
     min-height: 100vh;
     width: 100%;
@@ -648,15 +663,15 @@ body {
 .fi {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px;
+    border-radius: 10px; 
+    padding: 11px 14px;
     color: var(--text);
     font-family: var(--font-b);
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
     outline: none;
     width: 100%;
-    transition: border-color var(--t), background var(--t);
+    transition: all 0.25s ease;
 }
  
 .fi::placeholder {
@@ -666,7 +681,8 @@ body {
  
 .fi:focus {
     border-color: var(--blue);
-    background: var(--card2);
+    background: #1B2030;
+    box-shadow: 0 0 0 2px rgba(26, 79, 196, 0.2);
 }
 
 .input-icon-wrap {
@@ -777,10 +793,10 @@ body {
 
 .btn-submit {
     width: 100%;
-    padding: 12px;
+    padding: 13px;
     background: var(--blue);
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 10px; 
     color: #fff;
     font-family: var(--font-b);
     font-size: 13px;
@@ -792,7 +808,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    transition: opacity var(--t), transform 0.15s;
+    transition: all 0.25s ease;
 }
  
 .btn-submit svg {

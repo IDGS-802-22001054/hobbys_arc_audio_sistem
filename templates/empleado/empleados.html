@@ -1,12 +1,18 @@
 {% extends "layout_emp.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/empleados.css') }}">
+{% endblock %}
+
 {% block page_title %}Gestión de Empleados{% endblock %}
+
 {% block container %}
 
 <div class="page-header fade-up">
     <h2 class="page-header-title">GESTIÓN DE EMPLEADOS</h2>
     <form method="GET" action="{{ url_for('empleados.empleados') }}">
         <div class="search-wrap">
-            <input type="text" name="q" class="search-input" placeholder="Buscar Empleado..." value="{{ q }}">
+            <input type="text" name="q" class="search-input" placeholder="Buscar empleado..." value="{{ q }}" class="ph ph-magnifying-glass">
             <i class="ph ph-magnifying-glass"></i>
         </div>
     </form>
@@ -108,30 +114,39 @@
                     {% endif %}
                 </td>
 
+                {# ── Columna de acciones: siempre en una sola fila ── #}
                 <td>
                     <div class="action-btns">
-                        <a href="{{ url_for('empleados.ver_empleado', id=e.IdEmpleado) }}" class="action-btn view"
-                            title="Ver">
+
+                        {# Ver #}
+                        <a href="{{ url_for('empleados.ver_empleado', id=e.IdEmpleado) }}"
+                           class="action-btn view" title="Ver">
                             <i class="ph ph-eye"></i>
                         </a>
-                        <a href="{{ url_for('empleados.editar_empleado', id=e.IdEmpleado) }}" class="action-btn edit"
-                            title="Editar">
+
+                        {# Editar #}
+                        <a href="{{ url_for('empleados.editar_empleado', id=e.IdEmpleado) }}"
+                           class="action-btn edit" title="Editar">
                             <i class="ph ph-pencil-simple"></i>
                         </a>
+
+                        {# Desactivar / Activar — el form se inyecta inline sin romper el flex #}
                         {% if e.Activo %}
                         <a href="{{ url_for('empleados.eliminar_empleado', id=e.IdEmpleado) }}"
-                            class="action-btn btn-red btn-sm">
-                            <i class="ph ph-prohibit"></i> 
+                           class="action-btn btn-red" title="Desactivar">
+                            <i class="ph ph-prohibit"></i>
                         </a>
                         {% else %}
-                        <form method="POST" action="{{ url_for('empleados.activar_empleado', id=e.IdEmpleado) }}"
-                            style="display:inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                            <button type="submit" class="action-btn btn-green btn-sm">
-                                <i class="ph ph-check-circle"></i> 
+                        <form method="POST"
+                              action="{{ url_for('empleados.activar_empleado', id=e.IdEmpleado) }}"
+                              style="display:contents">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="action-btn btn-green" title="Activar">
+                                <i class="ph ph-check-circle"></i>
                             </button>
                         </form>
                         {% endif %}
+
                     </div>
                 </td>
             </tr>

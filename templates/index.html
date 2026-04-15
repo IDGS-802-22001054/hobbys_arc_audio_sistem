@@ -4,56 +4,572 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hobbys Car Audio – Login</title>
+    <meta name="description"
+        content="Hobbys Car Audio - Especialistas en audio automotriz, instalación profesional y los mejores productos del mercado.">
+    <title>Hobbys Car Audio – Audio Automotriz Profesional</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/presentacion.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
-    <div class="login-page">
-        <div class="login-bg">
-            <span></span><span></span><span></span><span></span><span></span>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="position:fixed;top:70px;right:20px;z-index:9999;min-width:280px;">
+        {% for category, message in messages %}
+        <div style="
+                        padding:14px 20px;
+                        margin-bottom:10px;
+                        border-radius:8px;
+                        font-weight:700;
+                        font-size:14px;
+                        color:#fff;
+                        background:{% if category == 'success' %}#2bad3c{% elif category == 'danger' %}#d72b2b{% else %}#1a4fc4{% endif %};
+                        box-shadow:0 4px 16px rgba(0,0,0,0.3);
+                    ">
+            {{ message }}
         </div>
-        <div class="login-card">
-            <div class="login-logo">
-                <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
-            </div>
-            <div class="topbar"></div>
-            <div class="login-title">INICIO DE SESIÓN</div>
-            <div class="login-desc">Ingresa tus credenciales para continuar</div>
-
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <div class="flash-container">
-                {% for category, message in messages %}
-                <div class="flash-message flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% endwith %}
-
-            <form action="{{ url_for('auth.login') }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <div class="form-group">
-                    <label>Usuario</label>
-                    <input class="form-input" type="text" name="identificador"
-                        placeholder="Ingresa tu nombre de usuario">
-                </div>
-                <div class="form-group">
-                    <label>Contraseña</label>
-                    <input class="form-input" type="password" name="password" placeholder="••••••••">
-                </div>
-                <a class="forgot-link" href="{{ url_for('auth.recuperar_paso1') }}">¿Olvidaste tu contraseña?</a>
-                <button type="submit" class="btn-primary">INGRESAR AL SISTEMA</button>
-            </form>
-
-            <div class="divider"><span>o</span></div>
-            <div class="note">¿Aún no tienes cuenta? <a href="{{ url_for('clientes.nuevo_cliente') }}">Regístrate
-                    aquí</a></div>
-        </div>
+        {% endfor %}
     </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="gradient-bar"></div>
+
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-inner">
+                <a href="{{ url_for('publico.index') }}" class="navbar-logo">
+                    <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
+                </a>
+
+                <ul class="navbar-menu" id="navMenu">
+                    <li><a href="#inicio">Inicio</a></li>
+                    <li><a href="#nosotros">Nosotros</a></li>
+                    <li><a href="#servicios">Servicios</a></li>
+                    <li><a href="#productos">Productos</a></li>
+                    <li><a href="#contacto">Contacto</a></li>
+                </ul>
+
+                <div class="navbar-actions">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+                        <i class="ph ph-sign-in"></i>
+                        Iniciar Sesión
+                    </a>
+                </div>
+
+                <button class="navbar-toggle" id="navToggle" aria-label="Abrir menú">
+                    <i class="ph ph-list"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero" id="inicio">
+        <div class="hero-bg">
+            <div class="hero-gradient"></div>
+            <div class="hero-pattern"></div>
+        </div>
+
+        <div class="container">
+            <div class="hero-content fade-up">
+                <span class="hero-badge">
+                    <i class="ph ph-speaker-high"></i>
+                    Audio Automotriz Profesional
+                </span>
+                <h1 class="hero-title">
+                    TRANSFORMA TU<br>
+                    <span class="text-gradient">EXPERIENCIA EN PERSONALIZACIÓN</span>
+                </h1>
+                <p class="hero-desc">
+                    Más de 30 años de experiencia en fabricación de piezas de audio a base de
+                    fibra de vidrio y resina para la personalización de tu vehículo.
+                    Calidad, garantía y el mejor servicio al cliente.
+                </p>
+                <div class="hero-buttons">
+                    <a href="#servicios" class="btn btn-primary btn-lg">
+                        <i class="ph ph-play-circle"></i>
+                        Ver Servicios
+                    </a>
+                    <a href="#contacto" class="btn btn-secondary btn-lg">
+                        <i class="ph ph-phone"></i>
+                        Contáctanos
+                    </a>
+                </div>
+
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <strong>30+</strong>
+                        <span>Años de Experiencia</span>
+                    </div>
+                    <div class="hero-stat">
+                        <strong>5000+</strong>
+                        <span>Clientes Satisfechos</span>
+                    </div>
+                    <div class="hero-stat">
+                        <strong>100%</strong>
+                        <span>Garantía en Servicio</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-about" id="nosotros">
+        <div class="container">
+            <div class="about-grid">
+                <div class="about-content fade-up">
+                    <span class="section-eyebrow">Sobre Nosotros</span>
+                    <h2 class="section-title">PASIÓN POR LO AUTOMOTRIZ</h2>
+                    <p class="section-copy">
+                        En <strong>Hobby's Car Audio</strong> somos apasionados por la personalización de alta calidad.
+                        Con más de 30 años en el mercado, nos hemos dedicado a ofrecer los mejores productos
+                        y servicio automotriz, especializándonos en vehículos Off-Road.
+                    </p>
+                    <p class="section-copy">
+                        Nos enfocamos en crear soluciones de alto rendimiento y estructuras
+                        personalizadas, utilizando materiales como fibra de vidrio y resina poliéster,
+                        garantizando productos resistentes, duraderos y adaptados a condiciones extremas.
+                    </p>
+
+                    <div class="about-features">
+                        <div class="about-feature">
+                            <div class="about-feature-icon">
+                                <i class="ph ph-shield-check"></i>
+                            </div>
+                            <div>
+                                <h4>Garantía Total</h4>
+                                <p>Todos nuestros productos y servicios cuentan con garantía</p>
+                            </div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="about-feature-icon">
+                                <i class="ph ph-certificate"></i>
+                            </div>
+                            <div>
+                                <h4>Técnicos Certificados</h4>
+                                <p>Personal altamente capacitado y con experiencia</p>
+                            </div>
+                        </div>
+                        <div class="about-feature">
+                            <div class="about-feature-icon">
+                                <i class="ph ph-headphones"></i>
+                            </div>
+                            <div>
+                                <h4>Asesoría Personalizada</h4>
+                                <p>Te ayudamos a elegir el mejor equipo para tu vehículo</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="about-image fade-up delay-2">
+                    <div class="about-image-wrapper">
+                        <img src="{{ url_for('static', filename='img/about-image.jpg') }}"
+                            alt="Instalación de audio automotriz" onerror="this.style.display='none'">
+                        <div class="about-image-badge">
+                            <i class="ph ph-trophy"></i>
+                            <span>Líderes en el mercado</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-services" id="servicios">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="section-eyebrow">Nuestros Servicios</span>
+                <h2 class="section-title">LO QUE HACEMOS POR TI</h2>
+                <p class="section-copy" style="margin: 0 auto;">
+                    Ofrecemos una amplia gama de servicios para mejorar el diseño de tu vehículo
+                </p>
+            </div>
+
+            <div class="services-grid">
+                <div class="service-card card card-accent fade-up">
+                    <div class="service-icon">
+                        <i class="ph ph-car"></i>
+                    </div>
+                    <h3>Diseño de Piezas Personalizadas</h3>
+                    <p>Fabricación de piezas únicas en fibra de vidrio adaptadas al estilo y necesidades de cada
+                        vehículo.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Diseños a medida</li>
+                        <li><i class="ph ph-check-circle"></i> Modelado y prototipos</li>
+                        <li><i class="ph ph-check-circle"></i> Personalización estética</li>
+                    </ul>
+                </div>
+
+                <div class="service-card card card-accent accent-green fade-up delay-1">
+                    <div class="service-icon icon-green">
+                        <i class="ph ph-cube"></i>
+                    </div>
+                    <h3>Fabricación en Fibra de Vidrio</h3>
+                    <p>Elaboración de piezas resistentes y ligeras utilizando materiales de alta calidad.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Uso de resina y fibra premium</li>
+                        <li><i class="ph ph-check-circle"></i> Alta durabilidad</li>
+                        <li><i class="ph ph-check-circle"></i> Acabados profesionales</li>
+                    </ul>
+                </div>
+
+                <div class="service-card card card-accent accent-red fade-up delay-2">
+                    <div class="service-icon icon-red">
+                        <i class="ph ph-shapes"></i>
+                    </div>
+                    <h3>Interiores Personalizados</h3>
+                    <p>Creación de paneles, bases y estructuras interiores con acabados estéticos y funcionales.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Paneles y molduras</li>
+                        <li><i class="ph ph-check-circle"></i> Consolas personalizadas</li>
+                        <li><i class="ph ph-check-circle"></i> Integración estética</li>
+                    </ul>
+                </div>
+
+                <div class="service-card card card-accent accent-yellow fade-up delay-3">
+                    <div class="service-icon icon-yellow">
+                        <i class="ph ph-stack"></i>
+                    </div>
+                    <h3>Cajas y Estructuras Especiales</h3>
+                    <p>Fabricación de cajas y estructuras a medida para proyectos de personalización automotriz.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Diseños personalizados</li>
+                        <li><i class="ph ph-check-circle"></i> Optimización de espacio</li>
+                        <li><i class="ph ph-check-circle"></i> Alta resistencia</li>
+                    </ul>
+                </div>
+
+                <div class="service-card card card-accent fade-up delay-4">
+                    <div class="service-icon">
+                        <i class="ph ph-truck"></i>
+                    </div>
+                    <h3>Proyectos Off-Road</h3>
+                    <p>Fabricación de piezas especiales para vehículos todo terreno con alta resistencia.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Piezas para ATV, UTV y RZR</li>
+                        <li><i class="ph ph-check-circle"></i> Refuerzos estructurales</li>
+                        <li><i class="ph ph-check-circle"></i> Diseño robusto</li>
+                    </ul>
+                </div>
+
+                <div class="service-card card card-accent accent-green fade-up delay-5">
+                    <div class="service-icon icon-green">
+                        <i class="ph ph-paint-brush"></i>
+                    </div>
+                    <h3>Acabados y Detallado</h3>
+                    <p>Procesos de acabado para lograr piezas estéticas, lisas y listas para personalización final.</p>
+                    <ul class="service-list">
+                        <li><i class="ph ph-check-circle"></i> Lijado y pulido</li>
+                        <li><i class="ph ph-check-circle"></i> Preparación para pintura</li>
+                        <li><i class="ph ph-check-circle"></i> Detallado profesional</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-products" id="productos">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="section-eyebrow">Catálogo</span>
+                <h2 class="section-title">PRODUCTOS DESTACADOS</h2>
+                <p class="section-copy" style="margin: 0 auto;">
+                    Descubre nuestras piezas personalizadas en fibra de vidrio para la modificación automotriz
+                </p>
+            </div>
+            
+            <div class="products-showcase">
+                {% if productos %}
+                {% for producto in productos %}
+                <div class="product-showcase-card fade-up delay-{{ loop.index0 }}">
+
+                    <div class="product-showcase-image">
+                        {% if producto.imagen %}
+                        <img src="{{ producto.imagen }}" alt="{{ producto.nombre }}">
+                        {% else %}
+                        <div style="background:#1a1d24; width:100%; height:200px;"></div>
+                        {% endif %}
+
+                        {% if producto.stock > 0 %}
+                        <span class="product-tag">Disponible</span>
+                        {% else %}
+                        <span class="product-tag tag-sale">Bajo pedido</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="product-showcase-info">
+                        <span class="product-brand">Fibra de vidrio</span>
+
+                        <h4>{{ producto.nombre }}</h4>
+
+                        <p>
+                            {{ producto.descripcion[:80] }}{% if producto.descripcion|length > 80 %}...{% endif %}
+                        </p>
+
+                        <div class="product-showcase-footer">
+                            <strong>${{ "%.2f"|format(producto.precio) }}</strong>
+
+                            <a href="{{ url_for('catalogo_cliente.catalogo') }}" class="btn btn-sm btn-primary">
+                                Ver catálogo
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+                {% endfor %}
+                {% else %}
+                <p style="text-align:center; padding:20px;">
+                    No hay productos disponibles por el momento.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-testimonials">
+        <div class="container">
+            <div class="section-header text-center">
+                <span class="section-eyebrow">Testimonios</span>
+                <h2 class="section-title">LO QUE DICEN NUESTROS CLIENTES</h2>
+            </div>
+
+            <div class="testimonials-grid">
+                <div class="testimonial-card card fade-up">
+                    <div class="testimonial-stars">
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i>
+                    </div>
+                    <p class="testimonial-text">
+                        "Excelente servicio y atención. Me instalaron un sistema completo y el sonido quedó
+                        increíble. Totalmente recomendados."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">JM</div>
+                        <div>
+                            <strong>Juan Martínez</strong>
+                            <span>Honda Civic 2022</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-card card fade-up delay-1">
+                    <div class="testimonial-stars">
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i>
+                    </div>
+                    <p class="testimonial-text">
+                        "Los mejores precios de la zona y la instalación fue muy rápida. El equipo quedó
+                        perfecto, sin ningún problema. Muy profesionales."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar" style="background: var(--green);">MR</div>
+                        <div>
+                            <strong>María Rodríguez</strong>
+                            <span>Toyota Corolla 2021</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="testimonial-card card fade-up delay-2">
+                    <div class="testimonial-stars">
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i>
+                        <i class="ph-fill ph-star"></i>
+                    </div>
+                    <p class="testimonial-text">
+                        "Llevé mi camioneta para instalar subwoofer y amplificador. El resultado superó
+                        mis expectativas. Gran trabajo y excelente asesoría."
+                    </p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar" style="background: var(--yellow); color: var(--dark);">CL</div>
+                        <div>
+                            <strong>Carlos López</strong>
+                            <span>Ford F-150 2023</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-cta">
+        <div class="container">
+            <div class="cta-card fade-up">
+                <div class="cta-content">
+                    <h2>¿LISTO PARA MEJORAR TU AUDIO?</h2>
+                    <p>Agenda una cita o visítanos en nuestra tienda. Te asesoramos sin compromiso.</p>
+                </div>
+                <div class="cta-actions">
+                    <a href="#contacto" class="btn btn-primary btn-lg">
+                        <i class="ph ph-calendar-check"></i>
+                        Agendar Cita
+                    </a>
+                    <a href="tel:+526141234567" class="btn btn-secondary btn-lg">
+                        <i class="ph ph-phone"></i>
+                        (614) 123-4567
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-contact" id="contacto">
+        <div class="container">
+            <div class="contact-grid">
+                <div class="contact-info fade-up">
+                    <span class="section-eyebrow">Contacto</span>
+                    <h2 class="section-title">VISÍTANOS O ESCRÍBENOS</h2>
+                    <p class="section-copy">
+                        Estamos listos para atenderte y resolver todas tus dudas sobre nuestros productos y servicios.
+                    </p>
+
+                    <div class="contact-items">
+                        <div class="contact-item">
+                            <div class="contact-item-icon"><i class="ph ph-map-pin"></i></div>
+                            <div>
+                                <h4>Dirección</h4>
+                                <p>Av. Tecnológico #1234, Col. Centro<br>Chihuahua, Chih. CP 31000</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-item-icon"><i class="ph ph-phone"></i></div>
+                            <div>
+                                <h4>Teléfono</h4>
+                                <p>(614) 123-4567</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-item-icon"><i class="ph ph-envelope"></i></div>
+                            <div>
+                                <h4>Email</h4>
+                                <p>contacto@hobbyscaraudio.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-item-icon"><i class="ph ph-clock"></i></div>
+                            <div>
+                                <h4>Horario</h4>
+                                <p>Lun - Vie: 9:00 AM - 7:00 PM<br>Sáb: 9:00 AM - 3:00 PM</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="contact-social">
+                        <a href="#" class="social-link" aria-label="Facebook"><i class="ph ph-facebook-logo"></i></a>
+                        <a href="#" class="social-link" aria-label="Instagram"><i class="ph ph-instagram-logo"></i></a>
+                        <a href="#" class="social-link" aria-label="WhatsApp"><i class="ph ph-whatsapp-logo"></i></a>
+                        <a href="#" class="social-link" aria-label="TikTok"><i class="ph ph-tiktok-logo"></i></a>
+                    </div>
+                </div>
+
+                <div class="contact-form-wrapper fade-up delay-2">
+                    <form class="contact-form card" action="{{ url_for('publico.contacto') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <h3>Envíanos un mensaje</h3>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nombre <span style="color:var(--red)">*</span></label>
+                                <input type="text" name="nombre" class="form-input" placeholder="Tu nombre completo"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label>Teléfono</label>
+                                <input type="tel" name="telefono" class="form-input" placeholder="(614) 000-0000">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email <span style="color:var(--red)">*</span></label>
+                            <input type="email" name="email" class="form-input" placeholder="tu@email.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Asunto</label>
+                            <select name="asunto" class="form-input">
+                                <option value="">Selecciona una opción</option>
+                                <option value="cotizacion">Solicitar cotización</option>
+                                <option value="cita">Agendar una cita</option>
+                                <option value="informacion">Información de productos</option>
+                                <option value="soporte">Soporte técnico</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Mensaje <span style="color:var(--red)">*</span></label>
+                            <textarea name="mensaje" class="form-input" rows="4"
+                                placeholder="Cuéntanos en qué podemos ayudarte..." required></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%;">
+                            <i class="ph ph-paper-plane-tilt"></i>
+                            Enviar Mensaje
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="gradient-bar-thin"></div>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio"
+                        class="footer-logo" onerror="this.style.display='none'">
+                    <p>Especialistas en audio automotriz desde hace más de 30 años. Calidad, garantía y el mejor
+                        servicio.</p>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Navegación</h4>
+                    <ul>
+                        <li><a href="#inicio">Inicio</a></li>
+                        <li><a href="#nosotros">Nosotros</a></li>
+                        <li><a href="#servicios">Servicios</a></li>
+                        <li><a href="#productos">Productos</a></li>
+                        <li><a href="#contacto">Contacto</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Servicios</h4>
+                    <ul>
+                        <li><a href="#servicios">Instalación de bocinas</a></li>
+                        <li><a href="#servicios">Autoestereos</a></li>
+                        <li><a href="#servicios">Subwoofers</a></li>
+                        <li><a href="#servicios">Amplificadores</a></li>
+                        <li><a href="#servicios">Off-Road & ATV</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Aviso de privacidad</a></li>
+                        <li><a href="#">Términos y condiciones</a></li>
+                        <li><a href="#">Política de garantía</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2024 Hobby's Car Audio. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/pagina.js') }}"></script>
+
 </body>
 
 </html>

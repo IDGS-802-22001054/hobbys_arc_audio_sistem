@@ -359,3 +359,39 @@ def editar_perfil():
         return redirect(url_for('empleados.ver_perfil'))
 
     return render_template('empleado/editarPerfil.html', form=form)
+
+@empleados_bp.route('/empleados/reenviar-credenciales/<int:id>')
+def reenviar_credenciales(id):
+    fila = db.session.execute(
+        text('CALL SP_Empleados_Ver(:id)'), {'id': id}
+    ).fetchone()
+
+    if fila is None:
+        from flask import abort
+        abort(404)
+
+    correo = fila.CorreoElectronico
+    nombre = fila.Nombre
+    identificador = fila.Identificador
+
+    password_plano = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    password_hash = generate_password_hash(password_plano)
+
+    db.session.execute(
+        text("""
+            UPDATE Usuario 
+            SET PasswordHash = :hash,
+                DebeCambiarCredenciales = 1
+            WHERE Identificador = :identificador
+        """),
+        {
+            'hash': password_hash,
+            'identificador': identificador
+        }
+    )
+    db.session.commit()
+
+    enviar_credenciales_por_correo(correo, nombre, identificador, password_plano)
+
+    flash('Credenciales reenviadas correctamente al empleado.', 'success')
+    return redirect(url_for('empleados.editar_empleado', id=id))

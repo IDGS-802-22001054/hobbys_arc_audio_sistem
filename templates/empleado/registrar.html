@@ -1,5 +1,9 @@
 {% extends "layout_emp.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/empleados.css') }}">
+{% endblock %}
+
 {% block page_title %}Nuevo Empleado{% endblock %}
 
 {% block container %}
@@ -94,7 +98,7 @@
                     <select id="puesto" name="puesto" class="form-input">
                         <option value="">Seleccione un puesto</option>
                         {% for puesto in puestos %}
-                        <option value="{{ puesto }}" {% if form.puesto.data == puesto %}selected{% endif %}>
+                        <option value="{{ puesto }}" {% if form.puesto.data==puesto %}selected{% endif %}>
                             {{ puesto }}
                         </option>
                         {% endfor %}

@@ -11,11 +11,7 @@
     <div class="edit-card">
         <div class="edit-header">
             <div>
-                <p class="section-eyebrow">Inventario</p>
-                <h1 class="section-title">{{ "Crear producto" if modo == "nuevo" else "Modificar producto" }}</h1>
-                <p class="section-copy">
-                    {{ "Registra un nuevo producto terminado dentro del inventario." if modo == "nuevo" else "Actualiza los datos principales del producto terminado." }}
-                </p>
+                <h2 class="page-header-title">GESTIÓN DE EMPLEADOS</h2>
             </div>
             <a href="{{ url_for('stock_empleado.stock') }}" class="btn btn-blue">
                 <i class="ph ph-arrow-left"></i> Volver

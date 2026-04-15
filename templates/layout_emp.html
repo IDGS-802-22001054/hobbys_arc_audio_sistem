@@ -26,33 +26,40 @@
 
                 {% if rol in ['administrador', 'almacenista', 'consulta'] %}
                 <div class="nav-section">Principal</div>
-                <a href="{{ url_for('dashboard.dashboard') }}" class="nav-item {% if active == 'dashboard' %}active{% endif %}">
+                <a href="{{ url_for('dashboard.dashboard') }}"
+                    class="nav-item {% if active == 'dashboard' %}active{% endif %}">
                     <i class="ph ph-squares-four"></i> Dashboard
                 </a>
                 {% endif %}
 
                 {% if rol == 'administrador' %}
                 <div class="nav-section">Configuracion</div>
-                <a href="{{ url_for('configuracion_sistema.editar') }}" class="nav-item {% if active == 'opciones' %}active{% endif %}">
+                <a href="{{ url_for('configuracion_sistema.editar') }}"
+                    class="nav-item {% if active == 'opciones' %}active{% endif %}">
                     <i class="ph ph-gear"></i> Opciones
                 </a>
-                <a href="{{ url_for('empleados.empleados') }}" class="nav-item {% if active == 'empleados' %}active{% endif %}">
+                <a href="{{ url_for('empleados.empleados') }}"
+                    class="nav-item {% if active == 'empleados' %}active{% endif %}">
                     <i class="ph ph-users-three"></i> Empleados
                 </a>
-                <a href="{{ url_for('clientes.clientes') }}" class="nav-item {% if active == 'clientes' %}active{% endif %}">
+                <a href="{{ url_for('clientes.clientes') }}"
+                    class="nav-item {% if active == 'clientes' %}active{% endif %}">
                     <i class="ph ph-user-circle"></i> Clientes
                 </a>
                 {% endif %}
 
                 {% if rol in ['administrador', 'almacenista'] %}
                 <div class="nav-section">Materia Prima</div>
-                <a href="{{ url_for('compras.listar') }}" class="nav-item {% if active == 'compras' %}active{% endif %}">
+                <a href="{{ url_for('compras.listar') }}"
+                    class="nav-item {% if active == 'compras' %}active{% endif %}">
                     <i class="ph ph-shopping-cart"></i> Compras
                 </a>
-                <a href="{{ url_for('materia_prima.listar') }}" class="nav-item {% if active == 'inventario' %}active{% endif %}">
+                <a href="{{ url_for('materia_prima.listar') }}"
+                    class="nav-item {% if active == 'inventario' %}active{% endif %}">
                     <i class="ph ph-warehouse"></i> Inventario MP
                 </a>
-                <a href="{{ url_for('proveedores.listar') }}" class="nav-item {% if active == 'proveedores' %}active{% endif %}">
+                <a href="{{ url_for('proveedores.listar') }}"
+                    class="nav-item {% if active == 'proveedores' %}active{% endif %}">
                     <i class="ph ph-buildings"></i> Proveedores
                 </a>
                 {% endif %}
@@ -62,13 +69,15 @@
                 {% endif %}
 
                 {% if rol in ['administrador', 'produccion'] %}
-                <a href="{{ url_for('produccion.produccion') }}" class="nav-item {% if active == 'produccion' %}active{% endif %}">
+                <a href="{{ url_for('produccion.produccion') }}"
+                    class="nav-item {% if active == 'produccion' %}active{% endif %}">
                     <i class="ph ph-factory"></i> Produccion
                 </a>
                 {% endif %}
 
                 {% if rol in ['administrador', 'almacenista', 'consulta'] %}
-                <a href="{{ url_for('stock_empleado.stock') }}" class="nav-item {% if active == 'stock' %}active{% endif %}">
+                <a href="{{ url_for('stock_empleado.stock') }}"
+                    class="nav-item {% if active == 'stock' %}active{% endif %}">
                     <i class="ph ph-stack"></i> Stock
                 </a>
                 {% endif %}
@@ -84,7 +93,8 @@
                 {% endif %}
 
                 {% if rol in ['administrador', 'consulta'] %}
-                <a href="{{ url_for('costos_utilidades.listar') }}" class="nav-item {% if active == 'costos' %}active{% endif %}">
+                <a href="{{ url_for('costos_utilidades.listar') }}"
+                    class="nav-item {% if active == 'costos' %}active{% endif %}">
                     <i class="ph ph-currency-dollar"></i> Costos y Utilidades
                 </a>
                 {% endif %}
@@ -106,7 +116,8 @@
                     <span class="page-title">{% block page_title %}{% endblock %}</span>
                 </div>
                 <div class="topbar-right">
-                    <span class="date-chip">{{ (current_user.persona.Nombre + current_user.persona.Apellidos) | upper }}</span>
+                    <span class="date-chip">{{ (current_user.persona.Nombre + current_user.persona.Apellidos) | upper
+                        }}</span>
 
                     <div class="notif-container">
                         <input type="checkbox" id="notif-toggle" style="display: none;">
@@ -130,21 +141,27 @@
                                         <strong>Produccion</strong>
                                         <span class="status-tag">PENDIENTE</span>
                                     </div>
-                                    <p style="font-size: 11px; color: var(--text); line-height: 1.4; margin-bottom: 8px;">
-                                        Solicitud #{{ solicitud.IdSolicitudProduccion }} de {{ solicitud.NombreProducto }}
+                                    <p
+                                        style="font-size: 11px; color: var(--text); line-height: 1.4; margin-bottom: 8px;">
+                                        Solicitud #{{ solicitud.IdSolicitudProduccion }} de {{ solicitud.NombreProducto
+                                        }}
                                         por {{ solicitud.CantidadSolicitada }} pzas.
                                         {{ solicitud.NombreSolicita }} {{ solicitud.ApellidosSolicita }}
                                     </p>
                                     <div style="display: flex; gap: 8px;">
-                                        <form method="POST" action="{{ url_for('produccion.aprobar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
+                                        <form method="POST"
+                                            action="{{ url_for('produccion.aprobar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-green" style="padding: 6px 10px; font-size: 11px;">
+                                            <button type="submit" class="btn btn-green"
+                                                style="padding: 6px 10px; font-size: 11px;">
                                                 Aceptar
                                             </button>
                                         </form>
-                                        <form method="POST" action="{{ url_for('produccion.rechazar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
+                                        <form method="POST"
+                                            action="{{ url_for('produccion.rechazar_solicitud', id=solicitud.IdSolicitudProduccion) }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="btn btn-red" style="padding: 6px 10px; font-size: 11px;">
+                                            <button type="submit" class="btn btn-red"
+                                                style="padding: 6px 10px; font-size: 11px;">
                                                 Rechazar
                                             </button>
                                         </form>
@@ -155,13 +172,15 @@
 
                                 {% if alertas_criticas %}
                                 {% for a in alertas_criticas %}
-                                <a href="{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}{{ url_for('produccion.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% else %}{{ url_for('materia_prima.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% endif %}" class="notif-item"
-                                    style="text-decoration: none; display: block;">
+                                <a href="{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}{{ url_for('produccion.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% else %}{{ url_for('materia_prima.leer_alerta', id_alerta=a.IdAlertaSistema) }}{% endif %}"
+                                    class="notif-item" style="text-decoration: none; display: block;">
                                     <div class="notif-item-title">
-                                        <strong>{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}Produccion{% else %}Inventario{% endif %}</strong>
+                                        <strong>{% if a.TipoAlerta == 'MATERIAL_INSUFICIENTE' %}Produccion{% else
+                                            %}Inventario{% endif %}</strong>
                                         <span class="status-tag">REVISAR</span>
                                     </div>
-                                    <p style="font-size: 11px; color: var(--text); line-height: 1.4;">{{ a.Mensaje }}</p>
+                                    <p style="font-size: 11px; color: var(--text); line-height: 1.4;">{{ a.Mensaje }}
+                                    </p>
                                 </a>
                                 {% endfor %}
                                 {% endif %}
@@ -211,24 +230,11 @@
     </div>
 
     <script>
-        (() => {
-            const limiteMs = Number({{ inactividad_timeout_ms|default(7200000)|tojson }});
-            const destinoLogout = {{ url_for('auth.logout')|tojson }};
-            let temporizador = null;
 
-            const reiniciarTemporizador = () => {
-                window.clearTimeout(temporizador);
-                temporizador = window.setTimeout(() => {
-                    window.location.href = destinoLogout;
-                }, limiteMs);
-            };
-
-            ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'].forEach((evento) => {
-                window.addEventListener(evento, reiniciarTemporizador, { passive: true });
-            });
-
-            reiniciarTemporizador();
-        })();
+        window.history.pushState(null, "", window.location.href);
+        window.onpopstate = function () {
+            window.history.pushState(null, "", window.location.href);
+        };
     </script>
 </body>
 

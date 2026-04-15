@@ -8,22 +8,19 @@
 
 {% block container %}
 <section class="stock-page fade-up">
-    <div class="stock-header">
-        <div>
-            <p class="section-eyebrow">Inventario</p>
-            <h1 class="section-title">Stock de productos</h1>
-            <p class="section-copy">Consulta existencia, costo de fabricacion y administra las piezas del inventario.</p>
-        </div>
-
-        <div class="stock-toolbar">
-            <a href="{{ url_for('stock_empleado.nuevo_stock') }}" class="btn btn-green stock-add-btn">
-                <i class="ph ph-plus-circle"></i> Anadir nuevo producto
-            </a>
-
-            <form class="catalog-search" method="get" action="{{ url_for('stock_empleado.stock') }}">
+    <div class="page-header fade-up">
+        <h2 class="page-header-title">STOCK DE PRODUCTOS</h2>
+        <form method="GET" action="{{ url_for('stock_empleado.stock') }}">
+            <div class="search-wrap">
+                <input type="text" name="q" class="search-input" placeholder="Buscar producto..."
+                    value="{{ busqueda or '' }}" class="ph ph-magnifying-glass">
                 <i class="ph ph-magnifying-glass"></i>
-                <input type="search" name="q" placeholder="Buscar producto" value="{{ busqueda or '' }}">
-            </form>
+            </div>
+        </form>
+        <div class="page-header-actions">
+            <a href="{{ url_for('stock_empleado.nuevo_stock') }}" class="btn btn-blue">
+                <i class="ph ph-plus"></i> Nuevo Producto
+            </a>
         </div>
     </div>
 
@@ -64,18 +61,21 @@
                 </div>
 
                 <div class="stock-actions">
-                    <a href="{{ url_for('stock_empleado.detalle_stock', producto_id=producto.id) }}" class="btn btn-blue">
+                    <a href="{{ url_for('stock_empleado.detalle_stock', producto_id=producto.id) }}"
+                        class="btn btn-blue">
                         <i class="ph ph-eye"></i> Detalles
                     </a>
 
-                    <form method="post" action="{{ url_for('stock_empleado.desactivar_stock', producto_id=producto.id) }}">
+                    <form method="post"
+                        action="{{ url_for('stock_empleado.desactivar_stock', producto_id=producto.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-red" {% if not producto.activo %}disabled{% endif %}>
                             <i class="ph ph-power"></i> Desactivar
                         </button>
                     </form>
 
-                    <a href="{{ url_for('stock_empleado.editar_stock', producto_id=producto.id) }}" class="btn btn-green">
+                    <a href="{{ url_for('stock_empleado.editar_stock', producto_id=producto.id) }}"
+                        class="btn btn-green">
                         <i class="ph ph-pencil-simple"></i> Modificar
                     </a>
                 </div>

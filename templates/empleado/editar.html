@@ -1,5 +1,9 @@
 {% extends "layout_emp.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/empleados.css') }}">
+{% endblock %}
+
 {% block page_title %}Editar Empleado{% endblock %}
 
 {% block container %}
@@ -25,7 +29,8 @@
                 <label class="form-label" for="foto">Foto del empleado</label>
                 <input type="file" id="foto" name="foto" class="form-input"
                     accept="image/jpeg, image/png, image/gif, image/webp">
-                <small class="form-hint">Formatos permitidos: JPG, PNG, GIF, WEBP · Máximo 2 MB · Dejar vacio para no cambiar</small>
+                <small class="form-hint">Formatos permitidos: JPG, PNG, GIF, WEBP · Máximo 2 MB · Dejar vacio para no
+                    cambiar</small>
             </div>
         </div>
 
@@ -107,15 +112,15 @@
             </div>
 
             <div class="form-row">
-                <div class="form-group">
-                    {{ form.identificador.label(class="form-label") }}
-                    {{ form.identificador(class="form-input") }}
+                <div class="form-group" style="margin-top:10px;">
+                    <a href="{{ url_for('empleados.reenviar_credenciales', id=id) }}" class="link-credenciales">
+                        <i class="ph ph-paper-plane-tilt"></i>
+                        Reenviar credenciales al empleado
+                    </a>
+                    <small class="form-hint">
+                        Se generará una nueva contraseña y se enviará por correo automáticamente.
+                    </small>
                 </div>
-                <div class="form-group">
-                    {{ form.password.label(class="form-label") }}
-                    {{ form.password(class="form-input", placeholder="••••••••", autocomplete="new-password") }}
-                </div>
-
             </div>
 
             <div class="form-group">
@@ -130,9 +135,10 @@
                 </select>
             </div>
         </div>
-
     </div>
 
+    <br>
+    
     <div class="form-actions fade-up" style="animation-delay:0.12s">
         <a href="{{ url_for('empleados.ver_empleado', id=id) }}" class="btn btn-outline">Cancelar</a>
         <button type="submit" class="btn btn-blue">
