@@ -55,10 +55,15 @@ def nueva_compra():
 
     if request.method == 'POST':
         accion = request.form.get('accion')
-        id_prov = request.form.get('id_proveedor')
+        raw_id_prov = request.form.get('id_proveedor')
+        id_prov = int(raw_id_prov) if raw_id_prov and raw_id_prov.isdigit() else None
         obs = request.form.get('observaciones')
 
         if accion == 'agregar_tmp':
+            if not id_prov:
+                flash("Error: Seleccione un proveedor antes de agregar productos.", "error")
+                return redirect(url_for('compras.nueva_compra'))
+
             id_mp = request.form.get('id_mp')
             uni = request.form.get('unidad')
             costo = float(request.form.get('costo') or 0)
@@ -129,7 +134,6 @@ def nueva_compra():
     ).fetchall()
     
     datos_persistentes = carrito_raw[0] if carrito_raw else None
-    
     proveedores = Proveedor.query.filter_by(Activo=True).all()
     materias = MateriaPrima.query.all()
     
@@ -143,53 +147,44 @@ def nueva_compra():
 @compras_bp.route('/detalle/<int:id>')
 @login_required
 def ver_detalle(id):
-    sql_cabecera = text("""
-        SELECT 
-            c.IdCompraMateriaPrima AS id,
-            c.FechaCompra AS fecha,
-            c.Observaciones AS obs,
-            p.NombreEmpresa AS proveedor,
-            u.IdUsuario AS user_id,
-            CONCAT(per.Nombre, ' ', per.Apellidos) AS nombre_completo,
-            r.Nombre AS rol_usuario
-        FROM compramateriaprima c
-        JOIN proveedor p ON c.IdProveedor = p.IdProveedor
-        JOIN usuario u ON c.IdUsuarioRegistro = u.IdUsuario
-        JOIN persona per ON u.IdPersona = per.IdPersona
-        JOIN rol r ON u.IdRol = r.IdRol
-        WHERE c.IdCompraMateriaPrima = :id
-    """)
-    compra = db.session.execute(sql_cabecera, {'id': id}).fetchone()
+    compra = db.session.get(CompraMateriaPrima, id)
 
     if not compra:
+        flash("La compra no existe.", "error")
         return redirect(url_for('compras.listar'))
 
-    sql_detalles = text("""
-        SELECT 
-            m.Nombre,
-            um.Abreviatura AS unidad,
-            CASE
-                WHEN LOWER(um.Abreviatura) IN ('g', 'ml') THEN (d.Cantidad / 1000.0)
-                ELSE d.Cantidad
-            END AS CantidadVisual,
-            d.CostoUnitario,
-            (
-                CASE
-                    WHEN LOWER(um.Abreviatura) IN ('g', 'ml') THEN (d.Cantidad / 1000.0)
-                    ELSE d.Cantidad
-                END * d.CostoUnitario
-            ) AS Subtotal
-        FROM compramateriaprimadetalle d
-        JOIN materiaprima m ON d.IdMateriaPrima = m.IdMateriaPrima
-        JOIN unidadmedida um ON m.IdUnidadMedida = um.IdUnidadMedida
-        WHERE d.IdCompraMateriaPrima = :id_compra
-    """)
-    detalles = db.session.execute(sql_detalles, {'id_compra': id}).fetchall()
+    detalles_procesados = []
+    total_compra = 0
 
-    total_compra = sum(item.Subtotal for item in detalles)
+    for d in compra.detalles:
+        abreviatura_db = d.materia_prima.unidad_medida.Abreviatura.lower()
+        
+        cantidad_base = float(d.Cantidad)
+        costo_base = float(d.CostoUnitario)
+
+        if abreviatura_db in ['g', 'kg']:
+            cantidad_visual = cantidad_base / 1000.0 if abreviatura_db == 'g' else cantidad_base
+            unidad_visual = 'Kg'
+        elif abreviatura_db in ['ml', 'l']:
+            cantidad_visual = cantidad_base / 1000.0 if abreviatura_db == 'ml' else cantidad_base
+            unidad_visual = 'L'
+        else:
+            cantidad_visual = cantidad_base
+            unidad_visual = d.materia_prima.unidad_medida.Abreviatura
+
+        subtotal = cantidad_visual * costo_base
+        total_compra += subtotal
+
+        detalles_procesados.append({
+            'Nombre': d.materia_prima.Nombre,
+            'CantidadVisual': cantidad_visual,
+            'unidad': unidad_visual,
+            'CostoUnitario': costo_base,
+            'Subtotal': subtotal
+        })
 
     return render_template('compras/detalles.html', 
                            compra=compra, 
-                           detalles=detalles, 
+                           detalles=detalles_procesados, 
                            total=total_compra,
                            active='compras')

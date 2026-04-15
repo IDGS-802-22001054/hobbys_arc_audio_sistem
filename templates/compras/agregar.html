@@ -13,7 +13,7 @@
         <div class="row" style="display: flex; gap: 20px; padding: 20px; background: rgba(255,255,255,0.02);">
             <div style="flex: 1;">
                 <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">PROVEEDOR</label>
-                <select name="id_proveedor" class="form-control" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                <select name="id_proveedor" class="form-control" required style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
                     <option value="">Seleccione un proveedor...</option>
                     {% for p in proveedores %}
                         <option value="{{ p.IdProveedor }}" 
@@ -37,27 +37,32 @@
         <div style="padding: 20px; display: flex; gap: 10px; align-items: flex-end; background: rgba(52, 152, 219, 0.03);">
             <div style="flex: 2;">
                 <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">MATERIA PRIMA</label>
-                <select name="id_mp" class="form-control" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                <select name="id_mp" id="selectMP" class="form-control" required style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
                     <option value="">Seleccionar material...</option>
                     {% for m in materias %}
-                        <option value="{{ m.IdMateriaPrima }}">{{ m.Nombre }}</option>
+                        <option value="{{ m.IdMateriaPrima }}" 
+                                data-unidad="{{ m.unidad_medida.Nombre if m.unidad_medida else '' }}"
+                                data-precio="{{ m.PrecioUnitario }}">
+                            {{ m.Nombre }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
             <div style="flex: 1;">
                 <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">CANTIDAD</label>
-                <input type="number" name="cantidad" value="1" step="0.01" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                <input type="number" name="cantidad" value="1" step="any" required
+                    style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
             </div>
             <div style="flex: 1;">
-                <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">UNIDAD (COSTO X UNIDAD)</label>
-                <select name="unidad" class="form-control" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">UNIDAD</label>
+                <select name="unidad" id="selectUnidad" class="form-control" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
                     <option value="Kg">Kilogramos (Kg)</option>
                     <option value="L">Litros (L)</option>
                 </select>
             </div>
             <div style="flex: 1;">
                 <label style="color: var(--muted2); font-size: 12px; font-weight: 800;">COSTO UNIT.</label>
-                <input type="number" name="costo" value="0" step="0.01" style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                <input type="number" name="costo" id="inputCosto" value="0" step="0.01" required style="width: 100%; background: #1a1d21; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333;">
             </div>
             
             <button type="submit" name="accion" value="agregar_tmp" class="btn-square bg-view" style="height: 42px; width: 42px; border: none; cursor: pointer;">
@@ -69,7 +74,7 @@
             <thead>
                 <tr>
                     <th>PRODUCTO</th>
-                    <th>CANTIDAD (BASE)</th>
+                    <th>CANTIDAD</th>
                     <th>COSTO UNIT.</th>
                     <th>SUBTOTAL</th>
                     <th style="text-align: center;">ACCIONES</th>
@@ -84,23 +89,16 @@
                     <tr>
                         <td style="color: var(--text);">{{ item.NombreMateria }}</td>
                         <td>
-                            {{ "{:,.2f}".format(cantidad_real) }} 
-                            <small style="color: var(--muted2);">
-                                ({{ item.UnidadMedida }})
-                            </small>
+                            {{ "{:,.3f}".format(cantidad_real) }} 
+                            <small style="color: var(--muted2);">({{ item.UnidadMedida }})</small>
                         </td>
                         <td>$ {{ "{:,.2f}".format(item.CostoUnitario) }}</td>
                         <td style="color: var(--blue); font-weight: bold;">$ {{ "{:,.2f}".format(subtotal) }}</td>
                         <td style="text-align: center;">
-                            <button type="submit" name="accion" value="eliminar_item_{{ item.IdTmp }}" class="btn-square bg-delete" style="border: none; cursor: pointer;">
+                            <button type="submit" name="accion" value="eliminar_item_{{ item.IdTmp }}" class="btn-square bg-delete"
+                                formnovalidate style="border: none; cursor: pointer;">
                                 <i class="ph ph-trash"></i>
                             </button>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 30px; color: var(--muted2);">
-                            No hay productos en el borrador.
                         </td>
                     </tr>
                 {% endfor %}
@@ -109,19 +107,41 @@
 
         <div style="padding: 20px; text-align: right; border-top: 1px solid #2d3238;">
             <h3 style="color: var(--blue); margin-bottom: 15px;">TOTAL: $<span>{{ "{:,.2f}".format(total_compra.valor) }}</span></h3>
-            
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                <a href="{{ url_for('compras.listar') }}" class="btn-square" style="text-decoration: none; padding: 10px 20px; width: auto; color: var(--muted2); display: flex; align-items: center;">
-                    CANCELAR
-                </a>
-                
-                <button type="submit" name="accion" value="finalizar" class="btn-add" 
-                        style="background: var(--yellow); color: black; border: none; cursor: pointer; height: 45px; padding: 0 30px; font-weight: bold;"
-                        {% if not carrito %}disabled style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                <a href="{{ url_for('compras.listar') }}" class="btn-square" style="text-decoration: none; padding: 10px 20px; width: auto; color: var(--muted2); display: flex; align-items: center;">CANCELAR</a>
+                <button type="submit" name="accion" value="finalizar" class="btn-add" formnovalidate style="background: var(--yellow); color: black; border: none; cursor: pointer; height: 45px; padding: 0 30px; font-weight: bold;" {% if not carrito %}disabled{% endif %}>
                     <i class="ph ph-check-circle"></i> GUARDAR COMPRA DEFINITIVA
                 </button>
             </div>
         </div>
     </form>
 </div>
+
+<script>
+document.getElementById('selectMP').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (!selectedOption.value) return;
+
+    const unidadBase = selectedOption.getAttribute('data-unidad');
+    const precioBase = selectedOption.getAttribute('data-precio');
+    const selectUnidad = document.getElementById('selectUnidad');
+    const inputCosto = document.getElementById('inputCosto');
+
+    selectUnidad.innerHTML = ""; 
+    
+    if (unidadBase === 'Mililitros') {
+        let opt = document.createElement('option');
+        opt.value = 'L';
+        opt.innerHTML = 'Litros (L)';
+        selectUnidad.appendChild(opt);
+    } else {
+        let opt = document.createElement('option');
+        opt.value = 'Kg';
+        opt.innerHTML = 'Kilogramos (Kg)';
+        selectUnidad.appendChild(opt);
+    }
+
+    inputCosto.value = precioBase ? parseFloat(precioBase).toFixed(2) : 0;
+});
+</script>
 {% endblock %}

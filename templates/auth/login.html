@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hobbys Car Audio – Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Bebas+Neue&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modulos/login.css') }}">
+</head>
+
+<body>
+
+    <div class="login-page">
+        <div class="login-bg">
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="login-card">
+            <div class="login-logo">
+                <img src="{{ url_for('static', filename='img/logo_centrado.png') }}" alt="Hobbys Car Audio">
+            </div>
+
+            <div class="topbar"></div>
+
+            <div class="login-title">INICIO DE SESIÓN</div>
+            <div class="login-desc">Ingresa tus credenciales para continuar</div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-container">
+                {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('auth.login') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input class="form-input" type="text" name="identificador"
+                        placeholder="Ingresa tu nombre de usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input class="form-input" type="password" name="password" placeholder="••••••••">
+                </div>
+                <a class="forgot-link" href="{{ url_for('auth.recuperar_paso1') }}">¿Olvidaste tu contraseña?</a>
+                <button type="submit" class="btn-primary">INGRESAR AL SISTEMA</button>
+                <br>
+                <br>
+                <a href="{{ url_for('publico.index') }}" class="back-link">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                    Volver a la pagina
+                </a>
+            </form>
+
+            <div class="divider"></div>
+            <div class="note">¿Aún no tienes cuenta? <a href="{{ url_for('clientes.nuevo_cliente') }}">Regístrate
+                    aquí</a></div>
+        </div>
+    </div>
+</body>
+
+</html>
