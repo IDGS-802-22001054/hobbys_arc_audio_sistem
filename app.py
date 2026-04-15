@@ -27,6 +27,7 @@ from blueprints.auth.routes_auth import auth_bp
 from blueprints.empleados.routes_empleado import empleados_bp
 
 from config import DevelopmentConfig
+from extensions import mail
 from models import CorteVentaDiario, SesionUsuario, SolicitudProduccion, Usuario, db
 from services.configuracion import (
     alertas_materia_prima_habilitadas,
@@ -40,7 +41,7 @@ scheduler = APScheduler()
 
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
-login_manager.login_message = 'Inicia sesiÃ³n para continuar'
+login_manager.login_message = 'Inicia sesión para continuar'
 login_manager.login_message_category = 'warning'
 
 
