@@ -2,9 +2,9 @@ from decimal import Decimal
 
 from flask import abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 
-from models import Cliente, Persona, ProductoTerminado, db
+from models import Cliente, Persona, ProductoTerminado, SolicitudProduccion, db
 from services.ventas import registrar_venta_por_procedimiento
 
 from . import ventas_bp
@@ -73,6 +73,14 @@ def _serializar_producto(producto):
         "precio": _precio_decimal(producto.PrecioVenta),
         "stock": int(producto.StockActual or 0),
     }
+
+
+def _solicitud_pendiente_producto(producto_id):
+    return (
+        db.session.query(SolicitudProduccion.IdSolicitudProduccion)
+        .filter_by(IdProductoTerminado=producto_id, Estado="PENDIENTE")
+        .first()
+    )
 
 
 def _obtener_productos(busqueda=""):
@@ -241,6 +249,50 @@ def agregar_al_carrito():
     carrito[producto_id] = cantidad_actual + 1
     _guardar_carrito(carrito)
     flash(f"{producto.Nombre} se agrego a la venta.", "success")
+    return redirect(_url_ventas(busqueda))
+
+
+@ventas_bp.post("/solicitud-produccion")
+def solicitar_produccion():
+    busqueda = request.form.get("q", "").strip()
+    producto_id = request.form.get("producto_id", type=int)
+    cantidad = request.form.get("cantidad", type=int, default=1) or 1
+
+    if not producto_id or cantidad < 1:
+        flash("Datos invalidos para la solicitud.", "error")
+        return redirect(_url_ventas(busqueda))
+
+    producto = db.session.get(ProductoTerminado, producto_id)
+    if producto is None or not producto.Activo:
+        flash("El producto seleccionado no esta disponible.", "error")
+        return redirect(_url_ventas(busqueda))
+
+    stock_disponible = max(int(producto.StockActual or 0), 0)
+    if stock_disponible > 0:
+        flash("El producto aun tiene stock disponible. Puedes venderlo directamente.", "warning")
+        return redirect(_url_ventas(busqueda))
+
+    if _solicitud_pendiente_producto(producto_id):
+        flash("Ya existe una solicitud de produccion pendiente para esta pieza.", "warning")
+        return redirect(_url_ventas(busqueda))
+
+    db.session.execute(
+        text(
+            "CALL SP_SolicitudProduccion_Crear(:id_producto, :cantidad, :motivo, :id_usuario)"
+        ),
+        {
+            "id_producto": producto_id,
+            "cantidad": int(cantidad),
+            "motivo": f"Solicitud desde punto de venta por pieza agotada: {producto.Nombre}",
+            "id_usuario": current_user.IdUsuario,
+        },
+    )
+    db.session.commit()
+
+    flash(
+        "Solicitud de produccion generada correctamente. El administrador ya la tiene pendiente para aprobacion.",
+        "success",
+    )
     return redirect(_url_ventas(busqueda))
 
 

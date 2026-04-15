@@ -4,8 +4,12 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 from sqlalchemy import text
 
-from models import Produccion, SolicitudProduccion, db
-from services.produccion import asegurar_produccion_aprobada
+from models import AlertaSistema, Produccion, SolicitudProduccion, db
+from services.produccion import (
+    TIPO_ALERTA_MATERIAL_INSUFICIENTE,
+    asegurar_produccion_aprobada,
+    notificar_material_insuficiente_a_administradores,
+)
 
 produccion_bp = Blueprint('produccion', __name__)
 
@@ -13,6 +17,11 @@ produccion_bp = Blueprint('produccion', __name__)
 def _usuario_es_administrador():
     rol = (getattr(getattr(current_user, 'rol', None), 'Nombre', '') or '').lower().strip()
     return rol == 'administrador'
+
+
+def _mensaje_indica_falta_material(mensaje):
+    texto = (mensaje or '').lower()
+    return 'insuficiente' in texto and ('materia' in texto or 'stock' in texto)
 
 @produccion_bp.route('/produccion')
 @login_required
@@ -112,6 +121,10 @@ def rechazar_solicitud(id: int):
 @produccion_bp.route('/produccion/<int:id>/iniciar', methods=['POST'])
 @login_required
 def iniciar(id: int):
+    produccion = db.session.get(Produccion, id)
+    if produccion is None:
+        abort(404)
+
     db.session.execute(
         text('CALL SP_Produccion_Iniciar(:id_produccion, :id_usuario, @ok, @mensaje)'),
         {'id_produccion': id, 'id_usuario': current_user.IdUsuario}
@@ -126,7 +139,30 @@ def iniciar(id: int):
         flash(f'Produccion #{id} iniciada. Materia prima descontada.', 'success')
     else:
         mensaje = salida.mensaje if salida else 'Error al iniciar la produccion.'
+        if _mensaje_indica_falta_material(mensaje):
+            notificar_material_insuficiente_a_administradores(produccion, [{'id_materia_prima': None}])
+            db.session.commit()
         flash(mensaje, 'danger')
+
+    return redirect(url_for('produccion.produccion'))
+
+
+@produccion_bp.route('/produccion/alerta/leer/<int:id_alerta>')
+@login_required
+def leer_alerta(id_alerta: int):
+    alerta = db.session.get(AlertaSistema, id_alerta)
+    if alerta is None:
+        return redirect(url_for('produccion.produccion'))
+
+    if alerta.IdUsuarioDestino and alerta.IdUsuarioDestino != current_user.IdUsuario:
+        abort(403)
+
+    alerta.Leida = True
+    alerta.FechaLectura = datetime.now()
+    db.session.commit()
+
+    if alerta.TipoAlerta == TIPO_ALERTA_MATERIAL_INSUFICIENTE and alerta.ReferenciaId:
+        return redirect(url_for('produccion.detalle', id=alerta.ReferenciaId))
 
     return redirect(url_for('produccion.produccion'))
 

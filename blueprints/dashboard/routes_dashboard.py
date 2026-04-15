@@ -5,6 +5,10 @@ from flask_login import current_user, login_required
 from sqlalchemy import text
 
 from models import SolicitudProduccion, db
+from services.configuracion import (
+    alertas_materia_prima_habilitadas,
+    alertas_pocas_piezas_habilitadas,
+)
 from services.produccion import asegurar_produccion_aprobada
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -73,13 +77,17 @@ def dashboard():
         text('CALL SP_Dashboard_TopUnidadesSemanaAnterior()')
     ).fetchone()
 
-    alertas_stock = db.session.execute(
-        text('CALL SP_Dashboard_AlertasStockProducto()')
-    ).fetchall()
+    alertas_stock = []
+    if alertas_pocas_piezas_habilitadas():
+        alertas_stock = db.session.execute(
+            text('CALL SP_Dashboard_AlertasStockProducto()')
+        ).fetchall()
 
-    alertas_mp = db.session.execute(
-        text('CALL SP_Dashboard_AlertasStockMateriaPrima()')
-    ).fetchall()
+    alertas_mp = []
+    if alertas_materia_prima_habilitadas():
+        alertas_mp = db.session.execute(
+            text('CALL SP_Dashboard_AlertasStockMateriaPrima()')
+        ).fetchall()
 
     sp_map = {
         'semana': 'CALL SP_Dashboard_GraficaSemana()',

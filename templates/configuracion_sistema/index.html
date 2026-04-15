@@ -1,0 +1,78 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}CONFIGURACION{% endblock %}
+
+{% block container %}
+<div class="page-header fade-up">
+    <h2 class="page-header-title">CONFIGURACION DEL SISTEMA</h2>
+    <div class="page-header-actions">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline">
+            <i class="ph ph-arrow-left"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="form-section fade-up" style="margin-top: 18px; animation-delay: 0.04s;">
+    <div class="form-section-title">
+        <i class="ph ph-info"></i> Resumen
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div>
+            <span class="form-label">Ultima actualizacion</span>
+            <div class="form-input">
+                {% if configuracion.FechaActualizacion %}
+                {{ configuracion.FechaActualizacion.strftime('%d/%m/%Y %I:%M %p') }}
+                {% else %}
+                Sin cambios previos
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <span class="form-label">Actualizado por</span>
+            <div class="form-input">{{ actualizado_por }}</div>
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('configuracion_sistema.editar') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-grid fade-up" style="margin-top: 16px; animation-delay: 0.08s;">
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="ph ph-shield-check"></i> Seguridad y alertas
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    {{ form.horas_inactividad_cierre_sesion.label(class="form-label") }}
+                    {{ form.horas_inactividad_cierre_sesion(class="form-input", min="1", max="1440") }}
+                </div>
+                <div class="form-group">
+                    {{ form.unidad_inactividad_cierre_sesion.label(class="form-label") }}
+                    {{ form.unidad_inactividad_cierre_sesion(class="form-input") }}
+                </div>
+            </div>
+
+            <small class="form-hint">Horas: 1 a 72. Minutos: 1 a 59.</small>
+
+            <label style="display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 700;">
+                {{ form.alertar_pocas_piezas_terminadas() }}
+                Alertar cuando existan pocas piezas terminadas
+            </label>
+
+            <label style="display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 700;">
+                {{ form.alertar_materia_prima_minima() }}
+                Alertar cuando la materia prima llegue al minimo
+            </label>
+        </div>
+    </div>
+
+    <div class="form-actions fade-up" style="margin-top: 16px; animation-delay: 0.12s;">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline">Cancelar</a>
+        <button type="submit" class="btn btn-blue">
+            <i class="ph ph-floppy-disk"></i> Guardar configuracion
+        </button>
+    </div>
+</form>
+{% endblock %}

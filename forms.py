@@ -266,16 +266,19 @@ class ProduccionDefectuosaForm(Form):
 
 class ConfiguracionSistemaForm(Form):
     cantidad_minima_materia_prima = IntegerField('Stock Mínimo Materia Prima', [
-        validators.DataRequired(message='El campo es requerido'),
+        validators.Optional(),
         validators.NumberRange(min=0, message='No puede ser negativo')
     ])
     cantidad_minima_producto_terminado = IntegerField('Stock Mínimo Producto Terminado', [
-        validators.DataRequired(message='El campo es requerido'),
+        validators.Optional(),
         validators.NumberRange(min=0, message='No puede ser negativo')
     ])
-    horas_inactividad_cierre_sesion = IntegerField('Horas de Inactividad para Cerrar Sesión', [
+    horas_inactividad_cierre_sesion = IntegerField('Tiempo de Inactividad para Cerrar Sesión', [
         validators.DataRequired(message='El campo es requerido'),
-        validators.NumberRange(min=1, max=72, message='Debe ser entre 1 y 72 horas')
+        validators.NumberRange(min=1, max=1440, message='Ingresa un tiempo de inactividad valido')
     ])
+    unidad_inactividad_cierre_sesion = SelectField('Unidad de Tiempo', [
+        validators.DataRequired(message='Selecciona una unidad de tiempo')
+    ], choices=[('HORAS', 'Horas'), ('MINUTOS', 'Minutos')])
     alertar_pocas_piezas_terminadas = BooleanField('Alertar Pocas Piezas Terminadas')
     alertar_materia_prima_minima    = BooleanField('Alertar Materia Prima Mínima')

@@ -214,6 +214,7 @@ def nuevo_cliente():
                 )
                 db.session.add(nueva_sesion)
                 db.session.commit()
+                session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
                 login_user(usuario, remember=False)
                 flash('¡Cuenta creada y correo verificado! Bienvenido.', 'success')
                 return redirect(url_for('catalogo_cliente.catalogo'))
