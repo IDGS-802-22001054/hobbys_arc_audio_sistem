@@ -8,7 +8,7 @@
         <a href="{{ url_for('compras.listar') }}" style="color:inherit; margin-right: 10px;">
             <i class="ph ph-arrow-left"></i>
         </a> 
-        DETALLE #CP-{{ compra.id }}
+        DETALLE #CP-{{ compra.IdCompraMateriaPrima }}
     </h2>
 </div>
 
@@ -48,21 +48,23 @@
             
             <div style="margin-top: 15px;">
                 <label style="color: var(--muted2); font-size: 10px; font-weight: 800; display: block;">PROVEEDOR</label>
-                <p style="margin: 5px 0 15px; font-weight: 700;">{{ compra.proveedor }}</p>
+                <p style="margin: 5px 0 15px; font-weight: 700;">{{ compra.proveedor.NombreEmpresa }}</p>
 
                 <label style="color: var(--muted2); font-size: 10px; font-weight: 800; display: block;">RESPONSABLE</label>
                 <div style="background: var(--bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-top: 5px; margin-bottom: 15px;">
-                    <p style="margin: 0; font-size: 13px; font-weight: 700; color: white;">{{ compra.nombre_completo }}</p>
+                    <p style="margin: 0; font-size: 13px; font-weight: 700; color: white;">
+                        {{ compra.usuario_registro.persona.Nombre }} {{ compra.usuario_registro.persona.Apellidos }}
+                    </p>
                     <p style="margin: 3px 0 0; font-size: 11px; color: var(--blue); font-weight: 800; text-transform: uppercase;">
-                        ID: {{ compra.user_id }} | {{ compra.rol_usuario }}
+                        ID: {{ compra.IdUsuarioRegistro }} | {{ compra.usuario_registro.rol.Nombre }}
                     </p>
                 </div>
 
                 <label style="color: var(--muted2); font-size: 10px; font-weight: 800; display: block;">FECHA Y HORA</label>
-                <p style="margin: 5px 0 15px;">{{ compra.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p style="margin: 5px 0 15px;">{{ compra.FechaCompra.strftime('%d/%m/%Y %H:%M') }}</p>
 
                 <label style="color: var(--muted2); font-size: 10px; font-weight: 800; display: block;">OBSERVACIONES</label>
-                <p style="font-size: 12px; color: var(--text); line-height: 1.4;">{{ compra.obs or 'Sin observaciones.' }}</p>
+                <p style="font-size: 12px; color: var(--text); line-height: 1.4;">{{ compra.Observaciones or 'Sin observaciones.' }}</p>
             </div>
 
             <div style="margin-top: 25px; padding: 15px; background: rgba(52, 152, 219, 0.1); border: 1px solid var(--blue); border-radius: 10px; text-align: center;">
