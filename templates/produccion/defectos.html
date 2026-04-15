@@ -12,7 +12,7 @@
         <div>
             <h2 class="page-title">Registrar defectos</h2>
             <p class="page-subtitle">
-                Produccion <strong>#{{ prod.IdProduccion }}</strong> -
+                Produccion <strong>#{{ prod.IdProduccion }}</strong> —
                 {{ prod.NombreProducto }}
             </p>
         </div>
@@ -52,33 +52,34 @@
                 <i class="ph ph-warning" style="color:var(--red)"></i>
                 Cantidad de piezas defectuosas <span class="required">*</span>
             </label>
-            <input
-                type="number"
-                id="cantidad"
-                name="cantidad"
-                class="form-input"
-                min="1"
-                value="1"
-                placeholder="1"
-                readonly
-                required
-            >
-            <span class="form-hint">Se registra 1 pieza defectuosa por envio</span>
+            <input type="number" id="cantidad" name="cantidad" class="form-input" min="1" value="1" placeholder="1"
+                readonly required>
+            <span class="form-hint">Se registra 1 pieza defectuosa por envío</span>
         </div>
 
         <div class="form-group">
             <label class="form-label" for="descripcion">
                 <i class="ph ph-note-pencil"></i>
-                Descripcion del defecto
+                Descripción del defecto
             </label>
-            <textarea
-                id="descripcion"
-                name="descripcion"
-                class="form-input form-textarea"
-                rows="3"
-                placeholder="Ej. Fisura en el molde, color inconsistente, medidas fuera de tolerancia..."
-            ></textarea>
-            <span class="form-hint">Opcional, ayuda al analisis de calidad</span>
+            <textarea id="descripcion" name="descripcion" class="form-input form-textarea" rows="3"
+                placeholder="Ej. Fisura en el molde, color inconsistente, medidas fuera de tolerancia...">
+            </textarea>
+            <span class="form-hint">
+                Opcional — el nivel de severidad se determina automáticamente
+            </span>
+        </div>
+
+        {{/* Indicador visual del nivel — solo informativo, no se envía */}}
+        <div class="form-group" id="nivel-preview-group" style="display:none">
+            <label class="form-label">
+                <i class="ph ph-gauge"></i>
+                Nivel estimado
+            </label>
+            <span id="nivel-badge" class="badge"></span>
+            <span class="form-hint">
+                Calculado a partir de la descripción; no se almacena como campo separado
+            </span>
         </div>
 
         <div class="form-actions">
@@ -89,8 +90,43 @@
                 <i class="ph ph-warning"></i> Registrar defecto
             </button>
         </div>
-
     </form>
 </div>
+
+<script>
+    // Misma lógica que el backend — retroalimentación en tiempo real
+    const PALABRAS_ALTO = ['fisura', 'fractura', 'roto', 'crack', 'quiebre',
+        'falla', 'severo', 'crítico', 'critico', 'inutilizable'];
+    const PALABRAS_MEDIO = ['color', 'medida', 'tolerancia', 'inconsistente',
+        'deformado', 'manchado', 'incompleto'];
+
+    const NIVEL_STYLES = {
+        Alto: { cls: 'badge-red', icon: 'ph-warning-octagon' },
+        Medio: { cls: 'badge-yellow', icon: 'ph-warning' },
+        Bajo: { cls: 'badge-green', icon: 'ph-check-circle' },
+    };
+
+    function calcularNivel(texto) {
+        const t = texto.toLowerCase();
+        if (PALABRAS_ALTO.some(p => t.includes(p))) return 'Alto';
+        if (PALABRAS_MEDIO.some(p => t.includes(p))) return 'Medio';
+        return 'Bajo';
+    }
+
+    document.getElementById('descripcion').addEventListener('input', function () {
+        const group = document.getElementById('nivel-preview-group');
+        const badge = document.getElementById('nivel-badge');
+        const texto = this.value.trim();
+
+        if (!texto) { group.style.display = 'none'; return; }
+
+        const nivel = calcularNivel(texto);
+        const estilo = NIVEL_STYLES[nivel];
+
+        badge.className = `badge ${estilo.cls}`;
+        badge.innerHTML = `<i class="ph ${estilo.icon}"></i> ${nivel}`;
+        group.style.display = '';
+    });
+</script>
 
 {% endblock %}
