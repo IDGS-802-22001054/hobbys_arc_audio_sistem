@@ -75,17 +75,17 @@ def login():
 
         if not usuario or not check_password_hash(usuario.PasswordHash, password):
             flash('Nombre de usuario o contraseña incorrectos', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         if not usuario.Activo:
             flash('Tu cuenta está desactivada, contacta al administrador', 'warning')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         destino = _obtener_destino_por_rol(usuario)
 
         if not destino:
             flash('Rol no reconocido, contacta al administrador', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         usuario.FechaUltimoAcceso = datetime.now()
 
@@ -102,13 +102,13 @@ def login():
         except Exception:
             db.session.rollback()
             flash('Error interno al iniciar sesión, intenta de nuevo', 'danger')
-            return render_template('index.html', form=form)
+            return render_template('auth/login.html', form=form)
 
         session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
         login_user(usuario, remember=False)
         return redirect(url_for(destino))
 
-    return render_template('index.html', form=form)
+    return render_template('auth/login.html', form=form)
 
 @auth_bp.route('/logout')
 @login_required
