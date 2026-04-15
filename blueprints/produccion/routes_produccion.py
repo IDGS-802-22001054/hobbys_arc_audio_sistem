@@ -13,6 +13,19 @@ from services.produccion import (
 
 produccion_bp = Blueprint('produccion', __name__)
 
+_PALABRAS_ALTO  = {'fisura', 'fractura', 'roto', 'crack', 'quiebre',
+                   'falla', 'severo', 'crítico', 'critico', 'inutilizable'}
+_PALABRAS_MEDIO = {'color', 'medida', 'tolerancia', 'inconsistente',
+                   'deformado', 'manchado', 'incompleto'}
+
+
+def _calcular_nivel_defecto(descripcion: str | None) -> str:
+    texto = (descripcion or '').lower()
+    if any(p in texto for p in _PALABRAS_ALTO):
+        return 'Alto'
+    if any(p in texto for p in _PALABRAS_MEDIO):
+        return 'Medio'
+    return 'Bajo'
 
 def _usuario_es_administrador():
     rol = (getattr(getattr(current_user, 'rol', None), 'Nombre', '') or '').lower().strip()
