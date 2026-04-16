@@ -1,0 +1,91 @@
+{% extends "layout_emp.html" %}
+
+{% block page_title %}HISTORIAL DE VENTAS{% endblock %}
+
+{% block container %}
+<section class="sales-page fade-up">
+    <div class="sales-header">
+        <div>
+            <p class="section-eyebrow">Ventas</p>
+            <h1 class="section-title">Historial de ventas</h1>
+            <p class="section-copy">Consulta las ventas registradas, su cliente, metodo de pago y detalle de productos.</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <a href="{{ url_for('ventas.ventas') }}" class="btn btn-outline">
+                <i class="ph ph-arrow-left"></i> Punto de venta
+            </a>
+            <form class="catalog-search" method="get" action="{{ url_for('ventas.historial') }}">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="search" name="q" placeholder="Buscar venta o cliente" value="{{ busqueda or '' }}">
+            </form>
+        </div>
+    </div>
+
+    <div style="display:grid; gap:16px;">
+        {% for venta in ventas %}
+        <article class="form-section fade-up" style="margin-top:0;">
+            <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start;">
+                <div>
+                    <div class="form-section-title">
+                        <i class="ph ph-receipt"></i> Venta #{{ venta.IdVenta }}
+                    </div>
+                    <p class="form-hint" style="margin-top:8px;">
+                        {{ venta.FechaVenta.strftime('%d/%m/%Y %I:%M %p') }}
+                    </p>
+                </div>
+                <div style="display:grid; gap:6px; justify-items:end;">
+                    <span class="status-tag">{{ venta.MetodoPago }}</span>
+                    <strong style="font-size:18px; color:var(--text);">${{ "%.2f"|format(venta.TotalVenta) }}</strong>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-top:14px;">
+                <div>
+                    <span class="form-label">Cliente</span>
+                    <div class="form-input">
+                        {% if venta.cliente and venta.cliente.persona %}
+                        {{ venta.cliente.persona.Nombre }} {{ venta.cliente.persona.Apellidos }}
+                        {% else %}
+                        No disponible
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <span class="form-label">Productos</span>
+                    <div class="form-input">{{ venta.detalles|length }}</div>
+                </div>
+            </div>
+
+            <div style="margin-top:14px; overflow:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="text-align:left; border-bottom:1px solid rgba(148, 163, 184, 0.18);">
+                            <th style="padding:10px 8px;">Producto</th>
+                            <th style="padding:10px 8px;">Cantidad</th>
+                            <th style="padding:10px 8px;">Precio unitario</th>
+                            <th style="padding:10px 8px;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detalle in venta.detalles %}
+                        <tr style="border-bottom:1px solid rgba(148, 163, 184, 0.12);">
+                            <td style="padding:10px 8px;">{{ detalle.producto_terminado.Nombre if detalle.producto_terminado else 'Producto no disponible' }}</td>
+                            <td style="padding:10px 8px;">{{ detalle.Cantidad }}</td>
+                            <td style="padding:10px 8px;">${{ "%.2f"|format(detalle.PrecioUnitario) }}</td>
+                            <td style="padding:10px 8px;">${{ "%.2f"|format(detalle.Subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+        {% else %}
+        <div class="empty-state">
+            <i class="ph ph-receipt"></i>
+            <h3>No hay ventas registradas</h3>
+            <p>Aun no existen ventas en el historial o la busqueda no encontro coincidencias.</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

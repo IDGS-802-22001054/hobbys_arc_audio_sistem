@@ -3,10 +3,20 @@
 {% block page_title %}Editar Perfil{% endblock %}
 
 {% block container %}
+{% set rol_actual = (current_user.rol.Nombre or '')|lower %}
+{% if rol_actual == 'administrador' %}
+    {% set volver_url = url_for('empleados.empleados') %}
+{% elif rol_actual == 'vendedor' %}
+    {% set volver_url = url_for('ventas.ventas') %}
+{% elif rol_actual in ['produccion', 'producción'] %}
+    {% set volver_url = url_for('produccion.produccion') %}
+{% else %}
+    {% set volver_url = url_for('dashboard.dashboard') %}
+{% endif %}
 
 <div class="page-header fade-up">
     <h2 class="page-header-title">EDITAR PERFIL</h2>
-    <a href="{{ url_for('empleados.empleados') }}" class="btn btn-outline">
+    <a href="{{ volver_url }}" class="btn btn-outline">
         <i class="ph ph-arrow-left"></i> Volver
     </a>
 </div>
@@ -103,7 +113,7 @@
     </div>
 
     <div class="form-actions fade-up" style="animation-delay:0.12s">
-        <a href="{{ url_for('empleados.empleados') }}" class="btn btn-outline">Cancelar</a>
+        <a href="{{ volver_url }}" class="btn btn-outline">Cancelar</a>
         <button type="submit" class="btn btn-blue">
             <i class="ph ph-check"></i> Guardar Cambios
         </button>

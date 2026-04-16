@@ -41,6 +41,17 @@
                 <input type="number" name="stock_minimo" step="0.01" value="{{ mp.StockMinimo }}" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
             </div>
             <div class="form-group">
+                <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">UNIDAD DE MEDIDA BASE</label>
+                <select name="id_unidad_medida" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);" required>
+                    {% for unidad in unidades %}
+                        <option value="{{ unidad.IdUnidadMedida }}" {{ 'selected' if unidad.IdUnidadMedida == mp.IdUnidadMedida else '' }}>{{ unidad.Nombre }} ({{ unidad.Abreviatura }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="form-group">
                 <label style="color: var(--muted2); font-size: 12px; font-weight: 800; display: block; margin-bottom: 8px;">PROVEEDOR</label>
                 <select name="id_proveedor" class="btn" style="width: 100%; text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text);">
                     {% for p in proveedores %}

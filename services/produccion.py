@@ -4,6 +4,7 @@ from models import AlertaSistema, Produccion, Rol, Usuario, db
 from services.configuracion import alertas_materia_prima_habilitadas
 
 TIPO_ALERTA_MATERIAL_INSUFICIENTE = 'MATERIAL_INSUFICIENTE'
+TIPO_ALERTA_PEDIDO_CLIENTE = 'PEDIDO_CLIENTE'
 
 
 def _decimal_seguro(valor):
@@ -91,6 +92,62 @@ def notificar_material_insuficiente_a_administradores(produccion, faltantes):
         creadas += 1
 
     return creadas
+
+
+def _usuario_cliente_destino(solicitud):
+    venta = getattr(solicitud, 'venta', None)
+    cliente = getattr(venta, 'cliente', None) if venta is not None else None
+    persona = getattr(cliente, 'persona', None) if cliente is not None else None
+    usuario = getattr(persona, 'usuario', None) if persona is not None else None
+
+    if usuario is None or not getattr(usuario, 'Activo', False):
+        return None
+
+    return usuario
+
+
+def notificar_estado_pedido_cliente(solicitud, estado):
+    usuario = _usuario_cliente_destino(solicitud)
+    if usuario is None:
+        return 0
+
+    producto = getattr(solicitud, 'producto_terminado', None)
+    nombre_producto = getattr(producto, 'Nombre', None) or f'producto #{solicitud.IdProductoTerminado}'
+
+    mensajes = {
+        'APROBADA': f'Tu pedido de {nombre_producto} fue aprobado y esta pendiente de produccion.',
+        'RECHAZADA': f'Tu pedido de {nombre_producto} fue rechazado por administracion.',
+        'EN_PROCESO': f'Tu pedido de {nombre_producto} ya esta en proceso de produccion.',
+        'FINALIZADA': f'Tu pedido de {nombre_producto} ya fue finalizado.',
+        'CANCELADA': f'La produccion de tu pedido de {nombre_producto} fue cancelada.',
+    }
+    mensaje = mensajes.get((estado or '').upper())
+    if not mensaje:
+        return 0
+
+    existente = (
+        db.session.query(AlertaSistema.IdAlertaSistema)
+        .filter_by(
+            TipoAlerta=TIPO_ALERTA_PEDIDO_CLIENTE,
+            ReferenciaId=solicitud.IdSolicitudProduccion,
+            IdUsuarioDestino=usuario.IdUsuario,
+            Leida=False,
+            Mensaje=mensaje[:255],
+        )
+        .first()
+    )
+    if existente:
+        return 0
+
+    db.session.add(
+        AlertaSistema(
+            TipoAlerta=TIPO_ALERTA_PEDIDO_CLIENTE,
+            ReferenciaId=solicitud.IdSolicitudProduccion,
+            Mensaje=mensaje[:255],
+            IdUsuarioDestino=usuario.IdUsuario,
+        )
+    )
+    return 1
 
 
 def asegurar_produccion_aprobada(solicitud, id_usuario_registro):

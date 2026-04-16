@@ -4,9 +4,9 @@ from werkzeug.security import generate_password_hash
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import text
 from sqlalchemy.orm import joinedload
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from models import db, Usuario, SesionUsuario, Cliente, Rol, Venta, VentaDetalle, SolicitudProduccion
+from models import AlertaSistema, db, Usuario, SesionUsuario, Cliente, Rol, Venta, VentaDetalle, SolicitudProduccion
 from forms import LoginForm, ClienteForm
 from flask_mail import Message
 from extensions import mail
@@ -214,6 +214,7 @@ def nuevo_cliente():
                 db.session.add(nueva_sesion)
                 db.session.commit()
                 login_user(usuario, remember=False)
+                session['app_role_nombre'] = 'cliente'
                 flash('¡Cuenta creada y correo verificado! Bienvenido.', 'success')
                 return redirect(url_for('catalogo_cliente.catalogo'))
 
@@ -440,3 +441,19 @@ def editar_perfil():
         return redirect(url_for('catalogo_cliente.catalogo'))
 
     return render_template('cliente/editarPerfil.html', form=form)
+
+
+@clientes_bp.route('/alerta/leer/<int:id_alerta>')
+@login_required
+def leer_alerta(id_alerta):
+    alerta = db.session.get(AlertaSistema, id_alerta)
+    if alerta is None:
+        return redirect(url_for('clientes.historial_compras'))
+
+    if alerta.IdUsuarioDestino and alerta.IdUsuarioDestino != current_user.IdUsuario:
+        abort(403)
+
+    alerta.Leida = True
+    alerta.FechaLectura = datetime.now()
+    db.session.commit()
+    return redirect(url_for('clientes.historial_compras'))

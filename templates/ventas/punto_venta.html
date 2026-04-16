@@ -15,10 +15,15 @@
             <p class="section-copy">Genera ventas desde el stock disponible y registra el pago en efectivo o con tarjeta.</p>
         </div>
 
-        <form class="catalog-search" method="get" action="{{ url_for('ventas.ventas') }}">
-            <i class="ph ph-magnifying-glass"></i>
-            <input type="search" name="q" placeholder="Buscar producto" value="{{ busqueda or '' }}">
-        </form>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <a href="{{ url_for('ventas.historial') }}" class="btn btn-outline">
+                <i class="ph ph-clock-counter-clockwise"></i> Ver historial
+            </a>
+            <form class="catalog-search" method="get" action="{{ url_for('ventas.ventas') }}">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="search" name="q" placeholder="Buscar producto" value="{{ busqueda or '' }}">
+            </form>
+        </div>
     </div>
 
     <div class="sales-layout">

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso denegado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="min-height: 100vh; margin: 0; display: grid; place-items: center; background: linear-gradient(135deg, #0f172a, #1e293b);">
+    <main style="width: min(92vw, 720px); background: rgba(15, 23, 42, 0.92); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 24px; padding: 40px 32px; color: #e2e8f0; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);">
+        <p style="margin: 0 0 8px; font-size: 14px; letter-spacing: 0.18em; text-transform: uppercase; color: #f59e0b;">Error 403</p>
+        <h1 style="margin: 0 0 14px; font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05;">Acceso denegado</h1>
+        <p style="margin: 0 0 28px; font-size: 1rem; line-height: 1.7; color: #cbd5e1;">
+            No tienes permisos para acceder a este recurso con tu rol actual.
+        </p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="javascript:history.back()" class="btn btn-blue">Regresar</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Ir al inicio de sesión</a>
+        </div>
+    </main>
+</body>
+</html>

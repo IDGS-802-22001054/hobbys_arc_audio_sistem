@@ -12,7 +12,7 @@
         <div>
             <p class="section-eyebrow">Produccion</p>
             <h1 class="section-title">Receta de {{ producto.nombre }}</h1>
-            <p class="section-copy">Activa la receta y registra cada material con su cantidad requerida y merma individual.</p>
+            <p class="section-copy">Activa la receta y registra cada material con su cantidad requerida y desperdicio individual.</p>
         </div>
 
         <div class="detail-actions">
@@ -44,7 +44,6 @@
                         <div class="form-input" style="display:flex; align-items:center; min-height:46px;">
                             {{ "La receta esta activa y lista para capturar materiales." if receta and receta.Activa else "Primero activa la receta para poder agregar materiales." }}
                         </div>
-                        <small class="form-hint">La merma ya no se captura de forma general; ahora se registra en cada detalle.</small>
                     </div>
                 </div>
 
@@ -86,9 +85,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="merma_detalle" id="merma_label">Merma</label>
+                        <label for="merma_detalle" id="merma_label">Desperdicio</label>
                         <input id="merma_detalle" name="merma_detalle" type="number" min="0" step="1" class="form-input" value="{{ detalle_form.merma }}" placeholder="Selecciona una materia prima" required>
-                        <small class="form-hint" id="merma_hint">Selecciona una materia prima para saber si la merma debe registrarse en gramos (g) o mililitros (ml).</small>
+                        <small class="form-hint" id="merma_hint">Selecciona una materia prima para saber si el desperdicio debe registrarse en gramos (g) o mililitros (ml).</small>
                     </div>
 
                     <div class="form-group">
@@ -120,7 +119,7 @@
                 <div>
                     <strong>{{ detalle.materia_prima }}</strong>
                     <span>{{ detalle.cantidad }} {{ detalle.unidad }} requeridos</span>
-                    <span>Merma: {{ detalle.merma }} {{ detalle.unidad }}</span>
+                    <span>Desperdicio: {{ detalle.merma }} {{ detalle.unidad }}</span>
                 </div>
 
                 <form method="post">
@@ -136,7 +135,7 @@
             <div class="empty-state">
                 <i class="ph ph-blueprint"></i>
                 <h3>La receta aun no tiene materiales</h3>
-                <p>Activa la receta y despues agrega las materias primas con su merma individual.</p>
+                <p>Activa la receta y despues agrega las materias primas con su desperdicio individual.</p>
             </div>
             {% endfor %}
         </div>
@@ -156,21 +155,21 @@
         const unidadBase = materia ? materia.unidad_base : "";
 
         if (unidadBase === "g") {
-            mermaLabel.textContent = "Merma a registrar (g)";
-            mermaHint.textContent = "Solo se permite registrar la merma en gramos (g).";
-            mermaInput.placeholder = "Ingresa la merma en gramos";
+            mermaLabel.textContent = "Desperdicio a registrar (g)";
+            mermaHint.textContent = "Solo se permite registrar el desperdicio en gramos (g).";
+            mermaInput.placeholder = "Ingresa el desperdicio en gramos";
             return;
         }
 
         if (unidadBase === "ml") {
-            mermaLabel.textContent = "Merma a registrar (ml)";
-            mermaHint.textContent = "Solo se permite registrar la merma en mililitros (ml).";
-            mermaInput.placeholder = "Ingresa la merma en mililitros";
+            mermaLabel.textContent = "Desperdicio a registrar (ml)";
+            mermaHint.textContent = "Solo se permite registrar el desperdicio en mililitros (ml).";
+            mermaInput.placeholder = "Ingresa el desperdicio en mililitros";
             return;
         }
 
-        mermaLabel.textContent = "Merma";
-        mermaHint.textContent = "Selecciona una materia prima para saber si la merma debe registrarse en gramos (g) o mililitros (ml).";
+        mermaLabel.textContent = "Desperdicio";
+        mermaHint.textContent = "Selecciona una materia prima para saber si el desperdicio debe registrarse en gramos (g) o mililitros (ml).";
         mermaInput.placeholder = "Selecciona una materia prima";
     }
 

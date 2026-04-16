@@ -34,6 +34,74 @@
     </div>
 </div>
 
+<div class="form-section fade-up" style="margin-top: 16px; animation-delay: 0.06s;">
+    <div class="form-section-title">
+        <i class="ph ph-database"></i> Respaldo completo
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div>
+            <span class="form-label">Destino</span>
+            <div class="form-input">Documentos\backupsH</div>
+        </div>
+        <div>
+            <span class="form-label">Ultimo respaldo</span>
+            <div class="form-input">
+                {% if ultimo_respaldo %}
+                {{ ultimo_respaldo.FechaRegistro.strftime('%d/%m/%Y %I:%M %p') }} - {{ ultimo_respaldo.NombreArchivo }}
+                {% else %}
+                Sin respaldos registrados
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <p class="form-hint" style="margin-top: 10px;">
+        El respaldo incluye estructura, datos, procedimientos, eventos y triggers de MySQL.
+    </p>
+    <form method="POST" action="{{ url_for('configuracion_sistema.generar_backup') }}" style="margin-top: 14px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">
+            <i class="ph ph-download-simple"></i> Generar backup completo
+        </button>
+    </form>
+</div>
+
+<div class="form-section fade-up" style="margin-top: 16px; animation-delay: 0.07s;">
+    <div class="form-section-title">
+        <i class="ph ph-clock-counter-clockwise"></i> Respaldo incremental
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div>
+            <span class="form-label">Base del incremento</span>
+            <div class="form-input">
+                {% if ultimo_respaldo_completo %}
+                {{ ultimo_respaldo_completo.NombreArchivo }}
+                {% else %}
+                Se requiere un backup completo reciente
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            <span class="form-label">Ultimo incremental</span>
+            <div class="form-input">
+                {% if ultimo_respaldo_incremental %}
+                {{ ultimo_respaldo_incremental.FechaRegistro.strftime('%d/%m/%Y %I:%M %p') }} - {{ ultimo_respaldo_incremental.NombreArchivo }}
+                {% else %}
+                Sin incrementales registrados
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <p class="form-hint" style="margin-top: 10px;">
+        Usa binary logs para exportar solo los cambios desde el ultimo respaldo exitoso con posicion de binlog.
+    </p>
+    <form method="POST" action="{{ url_for('configuracion_sistema.generar_backup_incremental') }}" style="margin-top: 14px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">
+            <i class="ph ph-file-arrow-down"></i> Generar backup incremental
+        </button>
+    </form>
+</div>
+
 <form method="POST" action="{{ url_for('configuracion_sistema.editar') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
