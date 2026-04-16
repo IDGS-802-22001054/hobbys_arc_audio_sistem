@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from collections import OrderedDict
+
 from flask import abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select, text
@@ -206,6 +208,49 @@ def _contexto_ventas(busqueda="", cliente_id="", metodo_pago="EFECTIVO", tipo_cl
     }
 
 
+def _obtener_historial_ventas(busqueda=""):
+    filas = db.session.execute(
+        text("CALL SP_Ventas_Historial(:busqueda)"),
+        {"busqueda": busqueda or None},
+    ).fetchall()
+
+    ventas = OrderedDict()
+    for fila in filas:
+        venta = ventas.setdefault(
+            fila.IdVenta,
+            {
+                "IdVenta": fila.IdVenta,
+                "FechaVenta": fila.FechaVenta,
+                "MetodoPago": fila.MetodoPago,
+                "TotalVenta": _precio_decimal(fila.TotalVenta),
+                "cliente": {
+                    "persona": {
+                        "Nombre": fila.NombreCliente or "No disponible",
+                        "Apellidos": "",
+                    }
+                },
+                "detalles": [],
+            },
+        )
+
+        if fila.IdVentaDetalle is None:
+            continue
+
+        venta["detalles"].append(
+            {
+                "IdVentaDetalle": fila.IdVentaDetalle,
+                "Cantidad": int(fila.Cantidad or 0),
+                "PrecioUnitario": _precio_decimal(fila.PrecioUnitario),
+                "Subtotal": _precio_decimal(fila.Subtotal),
+                "producto_terminado": {
+                    "Nombre": fila.NombreProducto or "Producto no disponible",
+                },
+            }
+        )
+
+    return list(ventas.values())
+
+
 @ventas_bp.before_request
 @login_required
 def proteger_ventas():
@@ -219,6 +264,18 @@ def proteger_ventas():
 def ventas():
     busqueda = request.args.get("q", "").strip()
     return render_template("ventas/punto_venta.html", **_contexto_ventas(busqueda))
+
+
+@ventas_bp.route("/historial")
+def historial():
+    busqueda = request.args.get("q", "").strip()
+    ventas_registradas = _obtener_historial_ventas(busqueda)
+    return render_template(
+        "ventas/historial.html",
+        ventas=ventas_registradas,
+        busqueda=busqueda,
+        active="ventas",
+    )
 
 
 @ventas_bp.post("/carrito/agregar")

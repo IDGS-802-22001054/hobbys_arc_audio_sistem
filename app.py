@@ -8,6 +8,8 @@ from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import text
 from extensions import mail
+from services.db_connection import configure_dynamic_mysql_users
+from services.db_role import register_role_management
 
 from blueprints.auth.routes_auth import auth_bp
 from blueprints.catalogo_cliente import catalogo_cliente_bp
@@ -32,6 +34,7 @@ from services.configuracion import (
     obtener_duracion_inactividad_sesion,
     obtener_milisegundos_inactividad_sesion,
 )
+from services.produccion import TIPO_ALERTA_PEDIDO_CLIENTE
 
 migracion = Migrate()
 proteccion_csrf = CSRFProtect()
@@ -83,6 +86,10 @@ def registrar_blueprints(app):
 
 
 def registrar_manejadores_error(app):
+    @app.errorhandler(403)
+    def acceso_prohibido(error):
+        return render_template("errors/403.html"), 403
+
     @app.errorhandler(404)
     def pagina_no_encontrada(error):
         return render_template("index.html"), 404
@@ -91,6 +98,7 @@ def registrar_manejadores_error(app):
 def crear_app():
     app = Flask(__name__)
     app.config.from_object(DevelopmentConfig)
+    configure_dynamic_mysql_users(app)
 
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
@@ -105,6 +113,8 @@ def crear_app():
     proteccion_csrf.init_app(app)
     login_manager.init_app(app)
     scheduler.init_app(app)
+    with app.app_context():
+        register_role_management(app, db)
 
     @app.after_request
     def no_cache(response):
@@ -191,6 +201,7 @@ def registrar_context_processors(aplicacion):
     @aplicacion.context_processor
     def inject_notifications():
         alertas = []
+        alertas_cliente = []
         solicitudes_pendientes = []
         alertas_mp_habilitadas = alertas_materia_prima_habilitadas()
 
@@ -202,6 +213,7 @@ def registrar_context_processors(aplicacion):
 
         es_admin = rol_actual == 'Administrador'
         es_autorizado = rol_actual in ['Administrador', 'Almacenista']
+        es_cliente = bool(getattr(getattr(current_user, 'persona', None), 'cliente', None)) if getattr(current_user, 'is_authenticated', False) else False
 
         if es_autorizado and alertas_mp_habilitadas:
             query = text("""
@@ -249,10 +261,25 @@ def registrar_context_processors(aplicacion):
             """)
             solicitudes_pendientes = db.session.execute(query_solicitudes).fetchall()
 
+        if es_cliente:
+            query_alertas_cliente = text("""
+                SELECT IdAlertaSistema, Mensaje, ReferenciaId, TipoAlerta, FechaGeneracion
+                FROM alertasistema
+                WHERE Leida = 0
+                  AND TipoAlerta = :tipo_alerta
+                  AND IdUsuarioDestino = :id_usuario
+                ORDER BY FechaGeneracion DESC
+            """)
+            alertas_cliente = db.session.execute(
+                query_alertas_cliente,
+                {'tipo_alerta': TIPO_ALERTA_PEDIDO_CLIENTE, 'id_usuario': current_user.IdUsuario},
+            ).fetchall()
+
         return dict(
             alertas_criticas=alertas,
+            alertas_cliente=alertas_cliente,
             solicitudes_pendientes=solicitudes_pendientes,
-            total_alertas=len(alertas) + len(solicitudes_pendientes),
+            total_alertas=len(alertas) + len(solicitudes_pendientes) + len(alertas_cliente),
             puede_ver_alertas=es_autorizado,
             puede_aprobar_solicitudes=es_admin,
             inactividad_timeout_ms=obtener_milisegundos_inactividad_sesion(),

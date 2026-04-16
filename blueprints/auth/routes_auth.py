@@ -21,11 +21,24 @@ DESTINOS_POR_ROL = {
 }
 
 def _obtener_destino_por_rol(usuario):
+    rol = (usuario.rol.Nombre if usuario and usuario.rol else '').lower().strip()
+    if rol:
+        return DESTINOS_POR_ROL.get(rol)
+
     if usuario and usuario.persona and usuario.persona.cliente:
         return 'catalogo_cliente.catalogo'
 
-    rol = (usuario.rol.Nombre if usuario and usuario.rol else '').lower().strip()
-    return DESTINOS_POR_ROL.get(rol)
+    return None
+
+
+def _guardar_rol_en_sesion(usuario):
+    rol = (usuario.rol.Nombre if usuario and usuario.rol else '').strip()
+    if rol:
+        session['app_role_nombre'] = rol
+        return
+
+    if usuario and usuario.persona and usuario.persona.cliente:
+        session['app_role_nombre'] = 'cliente'
 
 def _generar_codigo() -> str:
     return ''.join(random.choices(string.digits, k=6))
@@ -106,6 +119,7 @@ def login():
 
         session['id_sesion_usuario'] = nueva_sesion.IdSesionUsuario
         login_user(usuario, remember=False)
+        _guardar_rol_en_sesion(usuario)
         return redirect(url_for(destino))
 
     return render_template('auth/login.html', form=form)
@@ -139,6 +153,7 @@ def logout():
             db.session.rollback()
 
     session.pop('id_sesion_usuario', None)
+    session.pop('app_role_nombre', None)
     logout_user()
     session.clear()
     return redirect(url_for('auth.login'))

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from models import db, Empleado, Persona, Usuario, Rol
 from werkzeug.security import generate_password_hash
 from sqlalchemy import text
@@ -58,6 +58,17 @@ def _datos_direccion_form(form):
     }
 
 
+def _rol_actual():
+    return (getattr(getattr(current_user, 'rol', None), 'Nombre', '') or '').lower().strip()
+
+
+def _requiere_administrador():
+    if not current_user.is_authenticated:
+        abort(401)
+    if _rol_actual() != 'administrador':
+        abort(403)
+
+
 def _roles_activos():
     return db.session.execute(text('CALL SP_Roles_ListarActivos()')).fetchall()
 
@@ -77,8 +88,59 @@ def _puestos_desde_roles(roles):
         puestos.append(nombre)
     return puestos
 
+
+def _texto_seguro_para_identificador(texto):
+    texto = unicodedata.normalize('NFKD', (texto or '').strip().lower())
+    texto = ''.join(caracter for caracter in texto if not unicodedata.combining(caracter))
+    texto = re.sub(r'[^a-z0-9]+', '.', texto)
+    return texto.strip('.')
+
+
+def _generar_identificador_unico(nombre, apellidos):
+    primer_nombre = (_texto_seguro_para_identificador(nombre).split('.') or ['empleado'])[0]
+    primer_apellido = (_texto_seguro_para_identificador(apellidos).split('.') or [''])[0]
+    base = '.'.join(parte for parte in [primer_nombre, primer_apellido] if parte) or 'empleado'
+
+    candidato = base
+    consecutivo = 1
+    while db.session.execute(
+        text('SELECT COUNT(*) FROM Usuario WHERE Identificador = :identificador'),
+        {'identificador': candidato}
+    ).scalar():
+        consecutivo += 1
+        candidato = f'{base}{consecutivo}'
+
+    return candidato
+
+
+def _generar_password_temporal(longitud=10):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=longitud))
+
+
+def enviar_credenciales_por_correo(correo, nombre, identificador, password_plano):
+    try:
+        msg = Message(
+            subject='Credenciales de acceso - Hobbys Car Audio',
+            recipients=[correo],
+            body=(
+                f"Hola {nombre},\n\n"
+                f"Tus credenciales de acceso son:\n"
+                f"Usuario: {identificador}\n"
+                f"Contraseña: {password_plano}\n\n"
+                f"Al iniciar sesión deberás cambiar tu contraseña.\n"
+                f"Si no solicitaste este acceso, contacta al administrador."
+            )
+        )
+        mail.send(msg)
+        return True
+    except Exception as error:
+        flash(f'No se pudo enviar el correo de credenciales: {error}', 'warning')
+        return False
+
 @empleados_bp.route('/empleados', methods=['GET'])
+@login_required
 def empleados():
+    _requiere_administrador()
     q = request.args.get('q', '').strip()
     resultado = db.session.execute(text('CALL SP_Empleados_Listar()'))
     lista = resultado.fetchall()
@@ -103,7 +165,9 @@ def empleados():
 
 
 @empleados_bp.route('/empleados/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_empleado():
+    _requiere_administrador()
     form = forms.EmpleadoForm(request.form)
     roles = _roles_activos()
     puestos = _puestos_desde_roles(roles)
@@ -111,7 +175,12 @@ def nuevo_empleado():
     if request.method == 'POST':
         foto_b64  = foto_a_base64(request.files.get('foto'))
         direccion = _datos_direccion_form(form)
+        nombre = (form.nombre.data or '').strip()
+        apellidos = (form.apellidos.data or '').strip()
         correo = (form.correo.data or '').strip()
+        identificador = None
+        password_plano = None
+        rol_id = form.id_rol.data or None
 
         correo_existente = db.session.query(Persona.IdPersona).filter(
             db.func.lower(Persona.CorreoElectronico) == correo.lower()
@@ -126,8 +195,10 @@ def nuevo_empleado():
             )
  
         password_hash = None
-        if form.identificador.data:
-            password_hash = generate_password_hash(form.password.data)
+        if rol_id:
+            identificador = _generar_identificador_unico(nombre, apellidos)
+            password_plano = _generar_password_temporal()
+            password_hash = generate_password_hash(password_plano)
  
         db.session.execute(
             text(
@@ -138,8 +209,8 @@ def nuevo_empleado():
                 ':identificador, :password_hash, :id_rol, @id_empleado)'
             ),
             {
-                'nombre': form.nombre.data,
-                'apellidos': form.apellidos.data,
+                'nombre': nombre,
+                'apellidos': apellidos,
                 'telefono': form.telefono.data,
                 'correo': correo,
                 'foto': foto_b64,
@@ -148,16 +219,18 @@ def nuevo_empleado():
                 'salario':       form.salario.data,
                 'identificador': identificador,
                 'password_hash': password_hash,
-                'id_rol':        form.id_rol.data or None,
+                'id_rol':        rol_id,
                 **direccion,
             }
         )
         db.session.commit()
 
-        usuario = db.session.execute(
-            text('SELECT IdUsuario FROM Usuario WHERE Identificador = :id'),
-            {'id': identificador}
-        ).fetchone()
+        usuario = None
+        if identificador:
+            usuario = db.session.execute(
+                text('SELECT IdUsuario FROM Usuario WHERE Identificador = :id'),
+                {'id': identificador}
+            ).fetchone()
 
         if usuario:
             db.session.execute(
@@ -166,9 +239,12 @@ def nuevo_empleado():
             )
             db.session.commit()
 
-        enviar_credenciales_por_correo(correo, nombre, identificador, password_plano)
+        if identificador and password_plano:
+            enviar_credenciales_por_correo(correo, nombre, identificador, password_plano)
+            flash(f'Empleado registrado. Usuario asignado: {identificador}. Se envió el correo con credenciales.', 'success')
+            return redirect(url_for('empleados.empleados'))
 
-        flash(f'Empleado registrado. Usuario asignado: {identificador}. Se envió el correo con credenciales.', 'success')
+        flash('Empleado registrado correctamente.', 'success')
         return redirect(url_for('empleados.empleados'))
 
     return render_template('empleado/registrar.html', form=form, roles=roles, puestos=puestos)
@@ -210,7 +286,9 @@ def cambiar_credenciales():
     return render_template('empleado/cambiar_contraseña.html')
 
 @empleados_bp.route('/empleados/ver/<int:id>', methods=['GET'])
+@login_required
 def ver_empleado(id):
+    _requiere_administrador()
     fila = db.session.execute(
         text('CALL SP_Empleados_Ver(:id)'), {'id': id}
     ).fetchone()
@@ -220,7 +298,9 @@ def ver_empleado(id):
 
 
 @empleados_bp.route('/empleados/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_empleado(id):
+    _requiere_administrador()
     form = forms.EmpleadoForm(request.form)
 
     if request.method == 'GET':
@@ -282,7 +362,9 @@ def editar_empleado(id):
 
 
 @empleados_bp.route('/empleados/eliminar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def eliminar_empleado(id):
+    _requiere_administrador()
     fila = db.session.execute(
         text('CALL SP_Empleados_Ver(:id)'), {'id': id}
     ).fetchone()
@@ -299,7 +381,9 @@ def eliminar_empleado(id):
 
 
 @empleados_bp.route('/empleados/activar/<int:id>', methods=['POST'])
+@login_required
 def activar_empleado(id):
+    _requiere_administrador()
     db.session.execute(text('CALL SP_Empleados_Activar(:id)'), {'id': id})
     db.session.commit()
     flash('Empleado activado correctamente.', 'success')
@@ -309,10 +393,6 @@ def activar_empleado(id):
 @empleados_bp.route('/perfil/editar', methods=['GET', 'POST'])
 @login_required
 def editar_perfil():
-    empleado = db.session.query(Empleado).filter_by(
-        IdPersona=current_user.IdPersona
-    ).first_or_404()
-
     form = forms.EmpleadoForm(request.form)
 
     if request.method == 'GET':
@@ -337,31 +417,58 @@ def editar_perfil():
 
         db.session.execute(
             text(
-                'CALL SP_Perfil_ActualizarPerfil('
-                ':id_empleado, :nombre, :apellidos, :telefono, :correo, '
-                ':calle, :colonia, :numero_exterior, :numero_interior, :codigo_postal, '
-                ':foto, :identificador, :password_hash)'
+                '''
+                UPDATE Persona
+                SET
+                    Nombre = :nombre,
+                    Apellidos = :apellidos,
+                    Telefono = :telefono,
+                    CorreoElectronico = :correo,
+                    Calle = :calle,
+                    Colonia = :colonia,
+                    NumeroExterior = :numero_exterior,
+                    NumeroInterior = :numero_interior,
+                    CodigoPostal = :codigo_postal,
+                    Foto = COALESCE(NULLIF(:foto, ''), Foto)
+                WHERE IdPersona = :id_persona
+                '''
             ),
             {
-                'id_empleado': empleado.IdEmpleado,
+                'id_persona': current_user.IdPersona,
                 'nombre': form.nombre.data.strip(),
                 'apellidos': form.apellidos.data.strip(),
                 'telefono': form.telefono.data,
                 'correo': form.correo.data.strip(),
                 'foto': nueva_foto,
+                **direccion,
+            }
+        )
+        db.session.execute(
+            text(
+                '''
+                UPDATE Usuario
+                SET
+                    Identificador = :identificador,
+                    PasswordHash = COALESCE(:password_hash, PasswordHash)
+                WHERE IdUsuario = :id_usuario
+                '''
+            ),
+            {
+                'id_usuario': current_user.IdUsuario,
                 'identificador': form.identificador.data.strip(),
                 'password_hash': password_hash,
-                **direccion,
             }
         )
         db.session.commit()
         flash('Perfil actualizado correctamente.', 'success')
-        return redirect(url_for('empleados.ver_perfil'))
+        return redirect(url_for('empleados.editar_perfil'))
 
     return render_template('empleado/editarPerfil.html', form=form)
 
 @empleados_bp.route('/empleados/reenviar-credenciales/<int:id>')
+@login_required
 def reenviar_credenciales(id):
+    _requiere_administrador()
     fila = db.session.execute(
         text('CALL SP_Empleados_Ver(:id)'), {'id': id}
     ).fetchone()

@@ -232,6 +232,12 @@ class Usuario(UserMixin, BaseModel):
         foreign_keys=lambda: [AlertaSistema.IdUsuarioDestino], lazy=True
     )
     sesiones = db.relationship("SesionUsuario", back_populates="usuario", lazy=True)
+    respaldos_generados = db.relationship(
+        "RespaldoSistema",
+        back_populates="usuario",
+        foreign_keys=lambda: [RespaldoSistema.IdUsuario],
+        lazy=True,
+    )
 
     def get_id(self):
         return str(self.IdUsuario)
@@ -270,6 +276,34 @@ class ConfiguracionSistema(BaseModel):
         "Usuario",
         back_populates="configuraciones_actualizadas",
         foreign_keys=[IdUsuarioActualiza],
+        uselist=False,
+    )
+
+
+class RespaldoSistema(BaseModel):
+    __tablename__ = "RespaldoSistema"
+
+    IdRespaldoSistema = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    TipoRespaldo = db.Column(
+        db.String(20), nullable=False, server_default=sql_text("'COMPLETO'")
+    )
+    NombreArchivo = db.Column(db.String(255), nullable=False)
+    RutaArchivo = db.Column(db.String(500), nullable=False)
+    Estado = db.Column(db.String(20), nullable=False, server_default=sql_text("'EXITOSO'"))
+    Mensaje = db.Column(db.String(255))
+    BinlogArchivoInicio = db.Column(db.String(255))
+    BinlogPosicionInicio = db.Column(db.BigInteger)
+    BinlogArchivoFin = db.Column(db.String(255))
+    BinlogPosicionFin = db.Column(db.BigInteger)
+    FechaRegistro = db.Column(
+        db.DateTime, nullable=False, server_default=sql_text("CURRENT_TIMESTAMP")
+    )
+    IdUsuario = db.Column(db.Integer, db.ForeignKey("Usuario.IdUsuario"))
+
+    usuario = db.relationship(
+        "Usuario",
+        back_populates="respaldos_generados",
+        foreign_keys=[IdUsuario],
         uselist=False,
     )
 

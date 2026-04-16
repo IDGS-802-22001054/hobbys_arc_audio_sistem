@@ -10,6 +10,7 @@ from services.produccion import (
     TIPO_ALERTA_MATERIAL_INSUFICIENTE,
     asegurar_produccion_aprobada,
     notificar_material_insuficiente_a_administradores,
+    notificar_estado_pedido_cliente,
 )
 
 produccion_bp = Blueprint('produccion', __name__)
@@ -105,6 +106,7 @@ def aprobar_solicitud(id: int):
     solicitud.ObservacionesAprobacion = 'Solicitud aprobada por administrador'
 
     asegurar_produccion_aprobada(solicitud, current_user.IdUsuario)
+    notificar_estado_pedido_cliente(solicitud, 'APROBADA')
 
     db.session.commit()
     flash(f'Solicitud #{id} aprobada correctamente.', 'success')
@@ -137,6 +139,7 @@ def rechazar_solicitud(id: int):
         if produccion.Estado in {'PENDIENTE', 'Aprobada'}:
             produccion.Estado = 'Cancelada'
 
+    notificar_estado_pedido_cliente(solicitud, 'RECHAZADA')
     db.session.commit()
     flash(f'Solicitud #{id} rechazada.', 'info')
     return redirect(request.referrer or url_for('produccion.produccion'))
@@ -160,6 +163,9 @@ def iniciar(id: int):
     ).fetchone()
 
     if salida and salida.ok:
+        if produccion.solicitud_produccion is not None:
+            notificar_estado_pedido_cliente(produccion.solicitud_produccion, 'EN_PROCESO')
+            db.session.commit()
         flash(f'Produccion #{id} iniciada. Materia prima descontada.', 'success')
     else:
         mensaje = salida.mensaje if salida else 'Error al iniciar la produccion.'
@@ -281,6 +287,8 @@ def finalizar(id: int):
         produccion_actualizada = db.session.get(Produccion, id)
         if produccion_actualizada is not None:
             produccion_actualizada.CantidadFabricada = cantidad_buenas + cantidad_defectuosas
+            if produccion_actualizada.solicitud_produccion is not None:
+                notificar_estado_pedido_cliente(produccion_actualizada.solicitud_produccion, 'FINALIZADA')
 
         db.session.commit()
 
@@ -323,6 +331,9 @@ def cancelar(id: int):
         text('CALL SP_Produccion_Cancelar(:id_produccion, :id_usuario)'),
         {'id_produccion': id, 'id_usuario': current_user.IdUsuario}
     )
+    produccion_cancelada = db.session.get(Produccion, id)
+    if produccion_cancelada is not None and produccion_cancelada.solicitud_produccion is not None:
+        notificar_estado_pedido_cliente(produccion_cancelada.solicitud_produccion, 'CANCELADA')
     db.session.commit()
 
     flash(f'Produccion #{id} cancelada. Materia prima revertida al stock.', 'info')

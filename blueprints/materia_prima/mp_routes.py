@@ -119,6 +119,7 @@ def editar(id):
         mp.PrecioUnitario = request.form.get('precio')
         mp.StockMinimo = request.form.get('stock_minimo')
         mp.IdProveedor = request.form.get('id_proveedor')
+        mp.IdUnidadMedida = request.form.get('id_unidad_medida')
         mp.Descripcion = request.form.get('descripcion')
         
         db.session.commit()
@@ -126,7 +127,8 @@ def editar(id):
         return redirect(url_for('materia_prima.detalles', id=id))
     
     proveedores = Proveedor.query.filter_by(Activo=True).all()
-    return render_template('materia_prima/editar.html', mp=mp, proveedores=proveedores)
+    unidades = UnidadMedida.query.filter_by(Activo=True).all()
+    return render_template('materia_prima/editar.html', mp=mp, proveedores=proveedores, unidades=unidades)
 
 @materia_prima_bp.route('/inventario/nuevo', methods=['GET', 'POST'])
 @login_required
