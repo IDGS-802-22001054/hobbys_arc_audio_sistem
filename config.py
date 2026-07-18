@@ -27,6 +27,8 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    HOST = os.getenv("HOST", "0.0.0.0")
+    PORT = _entero_env("PORT") or 5000
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL", "mysql+pymysql://admin_app:Cont5445@localhost/hobbys_car_audio"
     )

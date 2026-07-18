@@ -291,4 +291,6 @@ def registrar_context_processors(aplicacion):
 app = crear_app()
 
 if __name__ == "__main__":
-    app.run(debug=app.config.get("DEBUG", True))
+    host = app.config.get("HOST", "0.0.0.0")
+    port = int(app.config.get("PORT", 5000))
+    app.run(host=host, port=port, debug=app.config.get("DEBUG", True))
