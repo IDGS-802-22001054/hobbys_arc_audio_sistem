@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import uuid4
 
-from flask import current_app, flash, redirect, render_template, request, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -23,6 +23,12 @@ ENDPOINTS_CATALOGO_PROTEGIDOS = {
     "catalogo_cliente.checkout",
     "catalogo_cliente.realizar_compra",
     "catalogo_cliente.layout",
+    "catalogo_cliente.api_catalogo",
+    "catalogo_cliente.api_producto",
+    "catalogo_cliente.api_obtener_carrito",
+    "catalogo_cliente.api_agregar_carrito",
+    "catalogo_cliente.api_actualizar_carrito",
+    "catalogo_cliente.api_eliminar_carrito",
 }
 
 
@@ -242,6 +248,51 @@ def _obtener_detalle_carrito():
         "cantidad_compra": cantidad_compra,
         "cantidad_solicitud": cantidad_solicitud,
     }
+
+
+def _decimal_a_texto(valor):
+    return format(_precio_decimal(valor), ".2f")
+
+
+def _serializar_linea_api(linea):
+    return {
+        **linea,
+        "precio": _decimal_a_texto(linea["precio"]),
+        "subtotal": _decimal_a_texto(linea["subtotal"]),
+        "subtotal_compra": _decimal_a_texto(linea["subtotal_compra"]),
+    }
+
+
+def _respuesta_carrito_api():
+    lineas, resumen = _obtener_detalle_carrito()
+    return {
+        "items": [_serializar_linea_api(linea) for linea in lineas],
+        "resumen": {
+            **resumen,
+            "subtotal": _decimal_a_texto(resumen["subtotal"]),
+            "total": _decimal_a_texto(resumen["total"]),
+            "subtotal_compra": _decimal_a_texto(resumen["subtotal_compra"]),
+        },
+    }
+
+
+def _cuerpo_json():
+    datos = request.get_json(silent=True)
+    if not isinstance(datos, dict):
+        raise ValueError("El cuerpo de la solicitud debe ser un objeto JSON.")
+    return datos
+
+
+def _entero_positivo(valor, campo):
+    if isinstance(valor, bool):
+        raise ValueError(f"{campo} debe ser un entero positivo.")
+    try:
+        numero = int(valor)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{campo} debe ser un entero positivo.") from error
+    if numero <= 0:
+        raise ValueError(f"{campo} debe ser un entero positivo.")
+    return numero
 
 
 def _obtener_usuario_registro():
@@ -470,6 +521,133 @@ def obtener_contexto_catalogo(busqueda=""):
         "active": "catalogo",
         "usuario_iniciales": "RC",
     }
+
+
+@catalogo_cliente_bp.get("/api/clientes/catalogo")
+@login_required
+def api_catalogo():
+    busqueda = request.args.get("q", "").strip()
+    try:
+        productos = _obtener_productos(busqueda)
+        return jsonify(
+            {
+                "productos": [
+                    {
+                        **producto,
+                        "precio": _decimal_a_texto(producto["precio"]),
+                    }
+                    for producto in productos
+                ],
+                "total": len(productos),
+                "busqueda": busqueda,
+            }
+        )
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible consultar el catalogo mediante la API.")
+        return jsonify({"error": "No fue posible consultar el catalogo."}), 500
+
+
+@catalogo_cliente_bp.get("/api/clientes/catalogo/<int:producto_id>")
+@login_required
+def api_producto(producto_id):
+    try:
+        producto = db.session.get(ProductoTerminado, producto_id)
+        if producto is None or not producto.Activo:
+            return jsonify({"error": "Producto no encontrado."}), 404
+        datos = _serializar_producto(producto, 0)
+        datos["precio"] = _decimal_a_texto(datos["precio"])
+        return jsonify(datos)
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible consultar el producto %s.", producto_id)
+        return jsonify({"error": "No fue posible consultar el producto."}), 500
+
+
+@catalogo_cliente_bp.get("/api/clientes/carrito")
+@login_required
+def api_obtener_carrito():
+    try:
+        return jsonify(_respuesta_carrito_api())
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible consultar el carrito mediante la API.")
+        return jsonify({"error": "No fue posible consultar el carrito."}), 500
+
+
+@catalogo_cliente_bp.post("/api/clientes/carrito")
+@login_required
+def api_agregar_carrito():
+    try:
+        datos = _cuerpo_json()
+        producto_id = _entero_positivo(datos.get("producto_id"), "producto_id")
+        cantidad = _entero_positivo(datos.get("cantidad", 1), "cantidad")
+        producto = db.session.get(ProductoTerminado, producto_id)
+        if producto is None or not producto.Activo:
+            return jsonify({"error": "Producto no encontrado o no disponible."}), 404
+
+        carrito = _normalizar_carrito()
+        nueva_cantidad = carrito.get(producto_id, 0) + cantidad
+        limite = _limite_carrito_por_stock(producto.StockActual)
+        if nueva_cantidad > limite:
+            return jsonify(
+                {
+                    "error": "La cantidad solicitada supera el limite disponible.",
+                    "limite": limite,
+                }
+            ), 409
+
+        carrito[producto_id] = nueva_cantidad
+        _guardar_carrito(carrito)
+        return jsonify(_respuesta_carrito_api()), 201
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible agregar un producto al carrito mediante la API.")
+        return jsonify({"error": "No fue posible actualizar el carrito."}), 500
+
+
+@catalogo_cliente_bp.put("/api/clientes/carrito/<int:producto_id>")
+@login_required
+def api_actualizar_carrito(producto_id):
+    try:
+        datos = _cuerpo_json()
+        cantidad = _entero_positivo(datos.get("cantidad"), "cantidad")
+        carrito = _normalizar_carrito()
+        if producto_id not in carrito:
+            return jsonify({"error": "El producto no esta en el carrito."}), 404
+
+        producto = db.session.get(ProductoTerminado, producto_id)
+        if producto is None or not producto.Activo:
+            carrito.pop(producto_id, None)
+            _guardar_carrito(carrito)
+            return jsonify({"error": "Producto no encontrado o no disponible."}), 404
+
+        limite = _limite_carrito_por_stock(producto.StockActual)
+        if cantidad > limite:
+            return jsonify(
+                {
+                    "error": "La cantidad solicitada supera el limite disponible.",
+                    "limite": limite,
+                }
+            ), 409
+
+        carrito[producto_id] = cantidad
+        _guardar_carrito(carrito)
+        return jsonify(_respuesta_carrito_api())
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible modificar el carrito mediante la API.")
+        return jsonify({"error": "No fue posible actualizar el carrito."}), 500
+
+
+@catalogo_cliente_bp.delete("/api/clientes/carrito/<int:producto_id>")
+@login_required
+def api_eliminar_carrito(producto_id):
+    carrito = _normalizar_carrito()
+    if producto_id not in carrito:
+        return jsonify({"error": "El producto no esta en el carrito."}), 404
+    carrito.pop(producto_id)
+    _guardar_carrito(carrito)
+    return jsonify(_respuesta_carrito_api())
 
 
 @catalogo_cliente_bp.route("/catalogo")
