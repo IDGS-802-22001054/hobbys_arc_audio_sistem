@@ -1,15 +1,16 @@
 from base64 import b64encode
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
-from flask_login import current_user, login_required
+from flask_login import current_user, login_required, login_user
 from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Cliente, ProductoTerminado, SolicitudProduccion, TarjetaCliente, Usuario, db
+from models import Cliente, ProductoTerminado, SesionUsuario, SolicitudProduccion, TarjetaCliente, Usuario, db
 from services.ventas import registrar_venta_catalogo_cliente
+from werkzeug.security import check_password_hash
 
 from . import catalogo_cliente_bp
 
@@ -487,7 +488,6 @@ def _resolver_tarjeta_checkout(cliente, form_data):
 
 
 @catalogo_cliente_bp.before_request
-@login_required
 def _proteger_catalogo_cliente():
     if request.endpoint not in ENDPOINTS_CATALOGO_PROTEGIDOS:
         return None
@@ -521,6 +521,44 @@ def obtener_contexto_catalogo(busqueda=""):
         "active": "catalogo",
         "usuario_iniciales": "RC",
     }
+
+
+@catalogo_cliente_bp.post("/api/clientes/login")
+def api_login():
+    try:
+        datos = _cuerpo_json()
+        identificador = (datos.get("identificador") or "").strip()
+        password = datos.get("password") or ""
+        if len(identificador) < 3 or len(password) < 6:
+            return jsonify({"error": "Usuario o contrasena no validos."}), 400
+
+        usuario = db.session.execute(
+            select(Usuario).where(Usuario.Identificador == identificador)
+        ).scalar_one_or_none()
+        persona = getattr(usuario, "persona", None)
+        cliente = getattr(persona, "cliente", None)
+        if usuario is None or not usuario.Activo or cliente is None or not check_password_hash(usuario.PasswordHash, password):
+            return jsonify({"error": "Credenciales de cliente incorrectas."}), 401
+
+        sesion_usuario = SesionUsuario(
+            IdUsuario=usuario.IdUsuario,
+            FechaInicio=datetime.now(),
+            FechaUltimaActividad=datetime.now(),
+            Activa=True,
+        )
+        usuario.FechaUltimoAcceso = datetime.now()
+        db.session.add(sesion_usuario)
+        db.session.commit()
+        session["id_sesion_usuario"] = sesion_usuario.IdSesionUsuario
+        session["app_role_nombre"] = "cliente"
+        login_user(usuario, remember=False)
+        return jsonify({"mensaje": "Sesion iniciada.", "usuario": usuario.Identificador})
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("No fue posible iniciar sesion desde la API.")
+        return jsonify({"error": "Error interno del servidor."}), 500
 
 
 @catalogo_cliente_bp.get("/api/clientes/catalogo")

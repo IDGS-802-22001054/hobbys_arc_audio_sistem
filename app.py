@@ -131,6 +131,9 @@ def crear_app():
 
     inicializar_base_datos(app)
     registrar_blueprints(app)
+    for endpoint, vista in app.view_functions.items():
+        if endpoint.startswith('catalogo_cliente.api_'):
+            proteccion_csrf.exempt(vista)
     registrar_manejadores_error(app)
     registrar_manejadores_sesion(app)
     registrar_context_processors(app)
