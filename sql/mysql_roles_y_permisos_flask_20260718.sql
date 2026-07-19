@@ -35,6 +35,7 @@ CREATE USER IF NOT EXISTS `cliente_app`@`localhost` IDENTIFIED BY 'Cont5445';
 GRANT USAGE ON *.* TO `cliente_app`@`localhost`;
 GRANT SELECT, UPDATE ON `hobbys_car_audio`.`alertasistema` TO `cliente_app`@`localhost`;
 GRANT SELECT ON `hobbys_car_audio`.`configuracionsistema` TO `cliente_app`@`localhost`;
+GRANT EXECUTE ON PROCEDURE `hobbys_car_audio`.`sp_ventas_registrar` TO `cliente_app`@`localhost`;
 GRANT `Cliente`@`%` TO `cliente_app`@`localhost`;
 
 -- Roles MySQL usados por la app

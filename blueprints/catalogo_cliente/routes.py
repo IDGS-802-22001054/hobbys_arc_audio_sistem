@@ -5,12 +5,19 @@ from uuid import uuid4
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from models import Cliente, ProductoTerminado, SesionUsuario, SolicitudProduccion, TarjetaCliente, Usuario, db
+from models import Cliente, Persona, ProductoTerminado, SesionUsuario, SolicitudProduccion, TarjetaCliente, Usuario, db
 from services.ventas import registrar_venta_catalogo_cliente
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from blueprints.clientes.routes_cliente import (
+    _enmascarar_correo,
+    _enviar_codigo_verificacion,
+    _generar_codigo,
+    obtener_rol_cliente_id,
+)
 
 from . import catalogo_cliente_bp
 
@@ -29,7 +36,11 @@ ENDPOINTS_CATALOGO_PROTEGIDOS = {
     "catalogo_cliente.api_obtener_carrito",
     "catalogo_cliente.api_agregar_carrito",
     "catalogo_cliente.api_actualizar_carrito",
+    "catalogo_cliente.api_actualizar_carrito_post",
     "catalogo_cliente.api_eliminar_carrito",
+    "catalogo_cliente.api_eliminar_carrito_post",
+    "catalogo_cliente.api_checkout",
+    "catalogo_cliente.api_registrar_compra",
 }
 
 
@@ -296,6 +307,16 @@ def _entero_positivo(valor, campo):
     return numero
 
 
+def _booleano_json(valor):
+    if isinstance(valor, bool):
+        return valor
+    if isinstance(valor, (int, float)):
+        return valor != 0
+    if isinstance(valor, str):
+        return valor.strip().lower() in {"1", "true", "si", "sí", "yes", "on"}
+    return False
+
+
 def _obtener_usuario_registro():
     usuario_id = current_app.config.get("CATALOGO_USUARIO_REGISTRO_ID")
     if usuario_id:
@@ -340,6 +361,19 @@ def _obtener_tarjetas_cliente(cliente):
             -(tarjeta.IdTarjetaCliente or 0),
         ),
     )
+
+
+def _serializar_tarjeta_api(tarjeta):
+    return {
+        "id": tarjeta.IdTarjetaCliente,
+        "alias": tarjeta.Alias or "",
+        "titular": tarjeta.Titular,
+        "marca": tarjeta.Marca,
+        "ultimos4": tarjeta.Ultimos4,
+        "mes_expiracion": tarjeta.MesExpiracion,
+        "anio_expiracion": tarjeta.AnioExpiracion,
+        "es_predeterminada": bool(tarjeta.EsPredeterminada),
+    }
 
 
 def _direccion_envio_actual(persona, form_data=None):
@@ -487,6 +521,211 @@ def _resolver_tarjeta_checkout(cliente, form_data):
     }
 
 
+def _mapear_checkout_desde_json(datos):
+    direccion = datos.get("direccion_envio") or {}
+    nueva_tarjeta = datos.get("nueva_tarjeta") or {}
+    return {
+        "acepto_terminos": _booleano_json(datos.get("acepto_terminos")),
+        "tarjeta_guardada_id": str(datos.get("tarjeta_guardada_id") or "").strip(),
+        "calle_envio": (direccion.get("calle") or "").strip(),
+        "colonia_envio": (direccion.get("colonia") or "").strip(),
+        "numero_exterior_envio": (direccion.get("numero_exterior") or "").strip(),
+        "numero_interior_envio": (direccion.get("numero_interior") or "").strip(),
+        "codigo_postal_envio": (direccion.get("codigo_postal") or "").strip(),
+        "alias_tarjeta": (nueva_tarjeta.get("alias") or "").strip(),
+        "titular_tarjeta": (nueva_tarjeta.get("titular") or "").strip(),
+        "marca_tarjeta": (nueva_tarjeta.get("marca") or "").strip(),
+        "numero_tarjeta": (nueva_tarjeta.get("numero") or "").strip(),
+        "mes_expiracion": str(nueva_tarjeta.get("mes_expiracion") or "").strip(),
+        "anio_expiracion": str(nueva_tarjeta.get("anio_expiracion") or "").strip(),
+        "guardar_tarjeta": _booleano_json(nueva_tarjeta.get("guardar_tarjeta")),
+        "tarjeta_predeterminada": _booleano_json(nueva_tarjeta.get("tarjeta_predeterminada")),
+    }
+
+
+def _respuesta_checkout_api():
+    carrito, resumen = _obtener_detalle_carrito()
+    cliente = _obtener_cliente_autenticado()
+    persona = getattr(cliente, "persona", None) or getattr(current_user, "persona", None)
+    tarjetas = _obtener_tarjetas_cliente(cliente)
+    direccion = _direccion_envio_actual(persona)
+    return {
+        "cliente": {
+            "id": cliente.IdCliente if cliente else None,
+            "nombre": (
+                f"{(persona.Nombre or '').strip()} {(persona.Apellidos or '').strip()}".strip()
+                if persona else ""
+            ),
+            "correo": getattr(persona, "CorreoElectronico", "") or "",
+        },
+        "direccion_envio": direccion,
+        "tarjetas": [_serializar_tarjeta_api(tarjeta) for tarjeta in tarjetas],
+        "anios_expiracion": list(range(date.today().year, date.today().year + 15)),
+        "carrito": {
+            "items": [_serializar_linea_api(linea) for linea in carrito],
+            "resumen": {
+                **resumen,
+                "subtotal": _decimal_a_texto(resumen["subtotal"]),
+                "total": _decimal_a_texto(resumen["total"]),
+                "subtotal_compra": _decimal_a_texto(resumen["subtotal_compra"]),
+            },
+        },
+    }
+
+
+def _actualizar_carrito_api(producto_id, cantidad):
+    carrito = _normalizar_carrito()
+    if producto_id not in carrito:
+        return jsonify({"error": "El producto no esta en el carrito."}), 404
+
+    producto = db.session.get(ProductoTerminado, producto_id)
+    if producto is None or not producto.Activo:
+        carrito.pop(producto_id, None)
+        _guardar_carrito(carrito)
+        return jsonify({"error": "Producto no encontrado o no disponible."}), 404
+
+    limite = _limite_carrito_por_stock(producto.StockActual)
+    if cantidad > limite:
+        return jsonify(
+            {
+                "error": "La cantidad solicitada supera el limite disponible.",
+                "limite": limite,
+            }
+        ), 409
+
+    carrito[producto_id] = cantidad
+    _guardar_carrito(carrito)
+    return jsonify(_respuesta_carrito_api())
+
+
+def _eliminar_carrito_api(producto_id):
+    carrito = _normalizar_carrito()
+    if producto_id not in carrito:
+        return jsonify({"error": "El producto no esta en el carrito."}), 404
+    carrito.pop(producto_id)
+    _guardar_carrito(carrito)
+    return jsonify(_respuesta_carrito_api())
+
+
+def _registrar_compra_catalogo(form_data):
+    carrito = _normalizar_carrito()
+    if not carrito:
+        raise ValueError("Tu carrito esta vacio.")
+
+    cliente = _obtener_cliente_autenticado()
+    if cliente is None:
+        raise ValueError("No se encontro un cliente asociado a tu usuario.")
+
+    productos, carrito_compra, carrito_solicitud, carrito_actualizado = _separar_carrito_por_existencia(carrito)
+    if carrito_actualizado != carrito:
+        _guardar_carrito(carrito_actualizado)
+        carrito = carrito_actualizado
+
+    if not carrito_compra and not carrito_solicitud:
+        raise ValueError("Tu carrito ya no tiene productos disponibles para procesar.")
+
+    if not form_data.get("acepto_terminos"):
+        raise ValueError("Debes aceptar los terminos y condiciones para continuar.")
+
+    direccion_envio = _validar_direccion_envio(form_data)
+    tarjeta_checkout = _resolver_tarjeta_checkout(cliente, form_data)
+    venta_registrada = False
+    solicitudes_creadas = 0
+
+    usuario = _obtener_usuario_registro()
+    if usuario is None:
+        raise ValueError("No hay un usuario disponible para registrar la venta.")
+
+    if carrito_compra or carrito_solicitud:
+        venta = registrar_venta_catalogo_cliente(
+            id_cliente=cliente.IdCliente,
+            id_usuario=usuario.IdUsuario,
+            metodo_pago="TARJETA",
+            carrito_total=carrito,
+            carrito_con_stock=carrito_compra,
+        )
+        venta_registrada = True
+    else:
+        venta = None
+
+    try:
+        persona = cliente.persona
+        persona.Calle = direccion_envio["calle"]
+        persona.Colonia = direccion_envio["colonia"]
+        persona.NumeroExterior = direccion_envio["numero_exterior"]
+        persona.NumeroInterior = direccion_envio["numero_interior"]
+        persona.CodigoPostal = direccion_envio["codigo_postal"]
+
+        if tarjeta_checkout and tarjeta_checkout["guardar_tarjeta"] and tarjeta_checkout["nueva_tarjeta"]:
+            tarjetas = _obtener_tarjetas_cliente(cliente)
+            if tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas:
+                for tarjeta in tarjetas:
+                    tarjeta.EsPredeterminada = False
+
+            nueva_tarjeta = tarjeta_checkout["nueva_tarjeta"]
+            db.session.add(
+                TarjetaCliente(
+                    IdCliente=cliente.IdCliente,
+                    Alias=nueva_tarjeta["Alias"],
+                    Titular=nueva_tarjeta["Titular"],
+                    Marca=nueva_tarjeta["Marca"],
+                    Ultimos4=nueva_tarjeta["Ultimos4"],
+                    MesExpiracion=nueva_tarjeta["MesExpiracion"],
+                    AnioExpiracion=nueva_tarjeta["AnioExpiracion"],
+                    TokenPasarela=f"manual_{uuid4().hex}",
+                    EsPredeterminada=tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas,
+                )
+            )
+
+        for producto_id, cantidad in carrito_solicitud.items():
+            producto = productos.get(producto_id)
+            if producto is None:
+                continue
+
+            db.session.add(
+                SolicitudProduccion(
+                    IdVenta=venta.IdVenta if venta is not None else None,
+                    IdProductoTerminado=producto_id,
+                    CantidadSolicitada=min(int(cantidad), MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA),
+                    Motivo=(
+                        "Solicitud automatica desde catalogo cliente por falta de existencia: "
+                        f"{producto.Nombre}"
+                    ),
+                    IdUsuarioSolicita=current_user.IdUsuario,
+                )
+            )
+            solicitudes_creadas += 1
+
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        if venta_registrada:
+            solicitudes_creadas = 0
+            current_app.logger.exception(
+                "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear solicitudes."
+            )
+            raise ValueError(
+                "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear las solicitudes de produccion pendientes."
+            )
+        raise
+
+    _guardar_carrito({})
+    mensajes = []
+    if venta_registrada:
+        mensajes.append("Compra registrada correctamente.")
+    if solicitudes_creadas:
+        mensajes.append(
+            f"Se generaron {solicitudes_creadas} solicitud(es) de produccion para piezas sin existencia."
+        )
+
+    return {
+        "venta_id": venta.IdVenta if venta is not None else None,
+        "venta_registrada": venta_registrada,
+        "solicitudes_creadas": solicitudes_creadas,
+        "mensajes": mensajes,
+    }
+
+
 @catalogo_cliente_bp.before_request
 def _proteger_catalogo_cliente():
     if request.endpoint not in ENDPOINTS_CATALOGO_PROTEGIDOS:
@@ -521,6 +760,180 @@ def obtener_contexto_catalogo(busqueda=""):
         "active": "catalogo",
         "usuario_iniciales": "RC",
     }
+
+
+@catalogo_cliente_bp.post("/api/clientes/registro")
+def api_registro_cliente():
+    try:
+        datos = _cuerpo_json()
+        identificador = (datos.get("identificador") or "").strip()
+        password = datos.get("password") or ""
+        confirm = datos.get("password_confirm") or ""
+        nombre = (datos.get("nombre") or "").strip()
+        apellidos = (datos.get("apellidos") or "").strip()
+        correo = (datos.get("correo") or "").strip()
+
+        if not nombre or not apellidos or not correo:
+            raise ValueError("Nombre, apellidos y correo son obligatorios.")
+        if password != confirm:
+            raise ValueError("Las contrasenas no coinciden.")
+        if not identificador:
+            raise ValueError("El nombre de usuario es requerido.")
+        if len(password) < 8:
+            raise ValueError("La contrasena debe tener al menos 8 caracteres.")
+
+        correo_existe = db.session.execute(
+            select(Persona.IdPersona).where(Persona.CorreoElectronico == correo).limit(1)
+        ).scalar_one_or_none()
+        if correo_existe:
+            raise ValueError("El correo electronico ya esta registrado.")
+
+        usuario_existe = db.session.execute(
+            select(Usuario.IdUsuario).where(Usuario.Identificador == identificador).limit(1)
+        ).scalar_one_or_none()
+        if usuario_existe:
+            raise ValueError("El nombre de usuario ya esta en uso.")
+
+        codigo = _generar_codigo()
+        session["verificacion"] = {
+            "codigo": codigo,
+            "expira": (datetime.now() + timedelta(minutes=10)).isoformat(),
+            "correo": correo,
+            "nombre": nombre,
+            "apellidos": apellidos,
+            "identificador": identificador,
+            "password_hash": generate_password_hash(password),
+        }
+        session.modified = True
+
+        if not _enviar_codigo_verificacion(correo, codigo, nombre):
+            return jsonify({"error": "No se pudo enviar el correo de verificacion. Intenta de nuevo."}), 502
+
+        return jsonify(
+            {
+                "mensaje": "Codigo de verificacion enviado correctamente.",
+                "correo_enmascarado": _enmascarar_correo(correo),
+            }
+        ), 202
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("No fue posible iniciar el registro de cliente por API.")
+        return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@catalogo_cliente_bp.post("/api/clientes/registro/verificar")
+def api_verificar_registro_cliente():
+    try:
+        datos = _cuerpo_json()
+        codigo_ingresado = (datos.get("codigo_verificacion") or "").strip()
+        verificacion = session.get("verificacion")
+        if not verificacion:
+            raise ValueError("La sesion de verificacion expiro. Intenta de nuevo.")
+        if datetime.now() > datetime.fromisoformat(verificacion["expira"]):
+            session.pop("verificacion", None)
+            raise ValueError("El codigo expiro. Vuelve a solicitar uno nuevo.")
+        if codigo_ingresado != verificacion["codigo"]:
+            raise ValueError("El codigo de verificacion es incorrecto.")
+
+        rol_cliente_id = obtener_rol_cliente_id()
+        if rol_cliente_id is None:
+            raise ValueError("No existe el rol Cliente. Contacta al administrador.")
+
+        db.session.execute(
+            text(
+                """
+            CALL SP_Clientes_Registrar(
+                :nombre,
+                :apellidos,
+                :correo,
+                :identificador,
+                :password_hash,
+                :id_rol,
+                :calle,
+                :colonia,
+                :numero_exterior,
+                :numero_interior,
+                :codigo_postal,
+                @id_cliente
+            )
+            """
+            ),
+            {
+                "nombre": verificacion["nombre"],
+                "apellidos": verificacion["apellidos"],
+                "correo": verificacion["correo"],
+                "identificador": verificacion["identificador"],
+                "password_hash": verificacion["password_hash"],
+                "id_rol": rol_cliente_id,
+                "calle": None,
+                "colonia": None,
+                "numero_exterior": None,
+                "numero_interior": None,
+                "codigo_postal": None,
+            },
+        )
+        db.session.commit()
+
+        session.pop("verificacion", None)
+
+        usuario = db.session.execute(
+            select(Usuario).where(Usuario.Identificador == verificacion["identificador"]).limit(1)
+        ).scalar_one_or_none()
+        if usuario is None:
+            raise ValueError("La cuenta se creo, pero no fue posible recuperar el usuario.")
+
+        nueva_sesion = SesionUsuario(
+            IdUsuario=usuario.IdUsuario,
+            FechaInicio=datetime.now(),
+            FechaUltimaActividad=datetime.now(),
+            Activa=True,
+        )
+        usuario.FechaUltimoAcceso = datetime.now()
+        db.session.add(nueva_sesion)
+        db.session.commit()
+
+        session["id_sesion_usuario"] = nueva_sesion.IdSesionUsuario
+        session["app_role_nombre"] = "cliente"
+        login_user(usuario, remember=False)
+
+        return jsonify(
+            {
+                "mensaje": "Cuenta creada y correo verificado correctamente.",
+                "usuario": usuario.Identificador,
+            }
+        ), 201
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("No fue posible verificar el registro de cliente por API.")
+        return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@catalogo_cliente_bp.post("/api/clientes/registro/reenviar-codigo")
+def api_reenviar_codigo_registro():
+    datos = session.get("verificacion")
+    if not datos:
+        return jsonify({"error": "La sesion de verificacion expiro. Vuelve a llenar el formulario."}), 400
+
+    nuevo_codigo = _generar_codigo()
+    datos["codigo"] = nuevo_codigo
+    datos["expira"] = (datetime.now() + timedelta(minutes=10)).isoformat()
+    session["verificacion"] = datos
+    session.modified = True
+
+    if not _enviar_codigo_verificacion(datos["correo"], nuevo_codigo, datos["nombre"]):
+        return jsonify({"error": "No se pudo reenviar el correo de verificacion."}), 502
+
+    return jsonify(
+        {
+            "mensaje": "Codigo reenviado correctamente.",
+            "correo_enmascarado": _enmascarar_correo(datos["correo"]),
+        }
+    )
 
 
 @catalogo_cliente_bp.post("/api/clientes/login")
@@ -642,34 +1055,45 @@ def api_agregar_carrito():
         return jsonify({"error": "No fue posible actualizar el carrito."}), 500
 
 
+@catalogo_cliente_bp.get("/api/clientes/checkout")
+@login_required
+def api_checkout():
+    try:
+        return jsonify(_respuesta_checkout_api())
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible consultar el checkout mediante la API.")
+        return jsonify({"error": "No fue posible consultar la informacion de compra."}), 500
+
+
+@catalogo_cliente_bp.post("/api/clientes/checkout")
+@login_required
+def api_registrar_compra():
+    try:
+        datos = _cuerpo_json()
+        form_data = _mapear_checkout_desde_json(datos)
+        resultado = _registrar_compra_catalogo(form_data)
+        return jsonify(
+            {
+                **resultado,
+                "mensaje": " ".join(resultado["mensajes"]).strip(),
+                "carrito": _respuesta_carrito_api(),
+            }
+        ), 201
+    except ValueError as error:
+        current_app.logger.warning("Checkout API rechazado: %s", error)
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible registrar la compra por API.")
+        return jsonify({"error": "No fue posible registrar la compra."}), 500
+
+
 @catalogo_cliente_bp.put("/api/clientes/carrito/<int:producto_id>")
 @login_required
 def api_actualizar_carrito(producto_id):
     try:
         datos = _cuerpo_json()
         cantidad = _entero_positivo(datos.get("cantidad"), "cantidad")
-        carrito = _normalizar_carrito()
-        if producto_id not in carrito:
-            return jsonify({"error": "El producto no esta en el carrito."}), 404
-
-        producto = db.session.get(ProductoTerminado, producto_id)
-        if producto is None or not producto.Activo:
-            carrito.pop(producto_id, None)
-            _guardar_carrito(carrito)
-            return jsonify({"error": "Producto no encontrado o no disponible."}), 404
-
-        limite = _limite_carrito_por_stock(producto.StockActual)
-        if cantidad > limite:
-            return jsonify(
-                {
-                    "error": "La cantidad solicitada supera el limite disponible.",
-                    "limite": limite,
-                }
-            ), 409
-
-        carrito[producto_id] = cantidad
-        _guardar_carrito(carrito)
-        return jsonify(_respuesta_carrito_api())
+        return _actualizar_carrito_api(producto_id, cantidad)
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
     except SQLAlchemyError:
@@ -677,15 +1101,30 @@ def api_actualizar_carrito(producto_id):
         return jsonify({"error": "No fue posible actualizar el carrito."}), 500
 
 
+@catalogo_cliente_bp.post("/api/clientes/carrito/<int:producto_id>/actualizar")
+@login_required
+def api_actualizar_carrito_post(producto_id):
+    try:
+        datos = _cuerpo_json()
+        cantidad = _entero_positivo(datos.get("cantidad"), "cantidad")
+        return _actualizar_carrito_api(producto_id, cantidad)
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible modificar el carrito mediante la API por POST.")
+        return jsonify({"error": "No fue posible actualizar el carrito."}), 500
+
+
 @catalogo_cliente_bp.delete("/api/clientes/carrito/<int:producto_id>")
 @login_required
 def api_eliminar_carrito(producto_id):
-    carrito = _normalizar_carrito()
-    if producto_id not in carrito:
-        return jsonify({"error": "El producto no esta en el carrito."}), 404
-    carrito.pop(producto_id)
-    _guardar_carrito(carrito)
-    return jsonify(_respuesta_carrito_api())
+    return _eliminar_carrito_api(producto_id)
+
+
+@catalogo_cliente_bp.post("/api/clientes/carrito/<int:producto_id>/eliminar")
+@login_required
+def api_eliminar_carrito_post(producto_id):
+    return _eliminar_carrito_api(producto_id)
 
 
 @catalogo_cliente_bp.route("/catalogo")
@@ -819,125 +1258,11 @@ def actualizar_carrito():
 @login_required
 def realizar_compra():
     busqueda = request.form.get("q", "").strip()
-    carrito = _normalizar_carrito()
-
-    if not carrito:
-        flash("Tu carrito esta vacio.", "error")
-        return redirect(_url_catalogo(busqueda))
 
     try:
-        cliente = _obtener_cliente_autenticado()
-        if cliente is None:
-            flash("No se encontro un cliente asociado a tu usuario.", "error")
-            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
-
-        productos, carrito_compra, carrito_solicitud, carrito_actualizado = _separar_carrito_por_existencia(carrito)
-        if carrito_actualizado != carrito:
-            _guardar_carrito(carrito_actualizado)
-            carrito = carrito_actualizado
-
-        if not carrito_compra and not carrito_solicitud:
-            flash("Tu carrito ya no tiene productos disponibles para procesar.", "error")
-            return redirect(_url_catalogo(busqueda))
-
-        if not request.form.get("acepto_terminos"):
-            raise ValueError("Debes aceptar los terminos y condiciones para continuar.")
-
-        direccion_envio = _validar_direccion_envio(request.form)
-        tarjeta_checkout = _resolver_tarjeta_checkout(cliente, request.form)
-        venta_registrada = False
-        solicitudes_creadas = 0
-
-        usuario = _obtener_usuario_registro()
-        if usuario is None:
-            flash("No hay un usuario disponible para registrar la venta.", "error")
-            return render_template("catalogo_checkout.html", **_contexto_checkout(busqueda, request.form))
-
-        if carrito_compra or carrito_solicitud:
-            venta = registrar_venta_catalogo_cliente(
-                id_cliente=cliente.IdCliente,
-                id_usuario=usuario.IdUsuario,
-                metodo_pago="TARJETA",
-                carrito_total=carrito,
-                carrito_con_stock=carrito_compra,
-            )
-            venta_registrada = True
-        else:
-            venta = None
-
-        try:
-            persona = cliente.persona
-            persona.Calle = direccion_envio["calle"]
-            persona.Colonia = direccion_envio["colonia"]
-            persona.NumeroExterior = direccion_envio["numero_exterior"]
-            persona.NumeroInterior = direccion_envio["numero_interior"]
-            persona.CodigoPostal = direccion_envio["codigo_postal"]
-
-            if tarjeta_checkout and tarjeta_checkout["guardar_tarjeta"] and tarjeta_checkout["nueva_tarjeta"]:
-                tarjetas = _obtener_tarjetas_cliente(cliente)
-                if tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas:
-                    for tarjeta in tarjetas:
-                        tarjeta.EsPredeterminada = False
-
-                nueva_tarjeta = tarjeta_checkout["nueva_tarjeta"]
-                db.session.add(
-                    TarjetaCliente(
-                        IdCliente=cliente.IdCliente,
-                        Alias=nueva_tarjeta["Alias"],
-                        Titular=nueva_tarjeta["Titular"],
-                        Marca=nueva_tarjeta["Marca"],
-                        Ultimos4=nueva_tarjeta["Ultimos4"],
-                        MesExpiracion=nueva_tarjeta["MesExpiracion"],
-                        AnioExpiracion=nueva_tarjeta["AnioExpiracion"],
-                        TokenPasarela=f"manual_{uuid4().hex}",
-                        EsPredeterminada=tarjeta_checkout["tarjeta_predeterminada"] or not tarjetas,
-                    )
-                )
-
-            for producto_id, cantidad in carrito_solicitud.items():
-                producto = productos.get(producto_id)
-                if producto is None:
-                    continue
-
-                db.session.add(
-                    SolicitudProduccion(
-                        IdVenta=venta.IdVenta if venta is not None else None,
-                        IdProductoTerminado=producto_id,
-                        CantidadSolicitada=min(int(cantidad), MAX_UNIDADES_SOLICITUD_SIN_EXISTENCIA),
-                        Motivo=(
-                            f"Solicitud automatica desde catalogo cliente por falta de existencia: "
-                            f"{producto.Nombre}"
-                        ),
-                        IdUsuarioSolicita=current_user.IdUsuario,
-                    )
-                )
-                solicitudes_creadas += 1
-
-            db.session.commit()
-        except SQLAlchemyError:
-            db.session.rollback()
-            if venta_registrada:
-                solicitudes_creadas = 0
-                current_app.logger.exception(
-                    "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear solicitudes."
-                )
-                flash(
-                    "La compra se registro, pero no fue posible actualizar la direccion, guardar la tarjeta o crear las solicitudes de produccion pendientes.",
-                    "warning",
-                )
-            else:
-                raise
-
-        _guardar_carrito({})
-        mensajes = []
-        if venta_registrada:
-            mensajes.append("Compra registrada correctamente.")
-        if solicitudes_creadas:
-            mensajes.append(
-                f"Se generaron {solicitudes_creadas} solicitud(es) de produccion para piezas sin existencia."
-            )
-        if mensajes:
-            flash(" ".join(mensajes), "success")
+        resultado = _registrar_compra_catalogo(request.form)
+        if resultado["mensajes"]:
+            flash(" ".join(resultado["mensajes"]), "success")
         return redirect(_url_catalogo(busqueda))
     except ValueError as error:
         flash(str(error), "error")
