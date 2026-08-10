@@ -1,12 +1,13 @@
 from base64 import b64encode
 from datetime import date, datetime
 from decimal import Decimal
+import re
 from uuid import uuid4
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user
 from sqlalchemy import or_, select, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from models import Cliente, Persona, ProductoTerminado, SesionUsuario, SolicitudProduccion, TarjetaCliente, Usuario, db
 from services.ventas import registrar_venta_catalogo_cliente
@@ -41,6 +42,8 @@ ENDPOINTS_CATALOGO_PROTEGIDOS = {
     "catalogo_cliente.api_eliminar_carrito_post",
     "catalogo_cliente.api_checkout",
     "catalogo_cliente.api_registrar_compra",
+    "catalogo_cliente.api_actualizar_usuario",
+    "catalogo_cliente.api_obtener_usuario",
 }
 
 
@@ -305,6 +308,43 @@ def _entero_positivo(valor, campo):
     if numero <= 0:
         raise ValueError(f"{campo} debe ser un entero positivo.")
     return numero
+
+
+def _serializar_usuario_api(usuario):
+    persona = usuario.persona
+    return {
+        "id": usuario.IdUsuario,
+        "identificador": usuario.Identificador,
+        "nombre": persona.Nombre,
+        "apellidos": persona.Apellidos,
+        "correo": persona.CorreoElectronico,
+        "telefono": persona.Telefono or "",
+        "direccion": {
+            "calle": persona.Calle or "",
+            "colonia": persona.Colonia or "",
+            "numero_exterior": persona.NumeroExterior or "",
+            "numero_interior": persona.NumeroInterior or "",
+            "codigo_postal": persona.CodigoPostal or "",
+        },
+    }
+
+
+def _validar_texto_usuario(datos, campo, minimo, maximo, obligatorio=True):
+    valor = datos.get(campo)
+    if valor is None:
+        if obligatorio:
+            raise ValueError(f"El campo {campo} es obligatorio.")
+        return None
+    if not isinstance(valor, str):
+        raise ValueError(f"El campo {campo} debe ser texto.")
+    valor = valor.strip()
+    if obligatorio and not valor:
+        raise ValueError(f"El campo {campo} es obligatorio.")
+    if valor and not minimo <= len(valor) <= maximo:
+        raise ValueError(
+            f"El campo {campo} debe tener entre {minimo} y {maximo} caracteres."
+        )
+    return valor or None
 
 
 def _booleano_json(valor):
@@ -971,6 +1011,109 @@ def api_login():
     except SQLAlchemyError:
         db.session.rollback()
         current_app.logger.exception("No fue posible iniciar sesion desde la API.")
+        return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@catalogo_cliente_bp.put("/api/clientes/usuario")
+@login_required
+def api_actualizar_usuario():
+    try:
+        datos = _cuerpo_json()
+        nombre = _validar_texto_usuario(datos, "nombre", 2, 100)
+        apellidos = _validar_texto_usuario(datos, "apellidos", 2, 150)
+        correo = _validar_texto_usuario(datos, "correo", 5, 120)
+        identificador = _validar_texto_usuario(datos, "identificador", 3, 50)
+        telefono = _validar_texto_usuario(datos, "telefono", 1, 30, obligatorio=False)
+        password = _validar_texto_usuario(datos, "password", 6, 128, obligatorio=False)
+
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", correo):
+            raise ValueError("El correo electronico no tiene un formato valido.")
+
+        direccion = datos.get("direccion", {})
+        if direccion is None:
+            direccion = {}
+        if not isinstance(direccion, dict):
+            raise ValueError("El campo direccion debe ser un objeto JSON.")
+
+        calle = _validar_texto_usuario(direccion, "calle", 1, 120, obligatorio=False)
+        colonia = _validar_texto_usuario(direccion, "colonia", 1, 120, obligatorio=False)
+        numero_exterior = _validar_texto_usuario(
+            direccion, "numero_exterior", 1, 20, obligatorio=False
+        )
+        numero_interior = _validar_texto_usuario(
+            direccion, "numero_interior", 1, 20, obligatorio=False
+        )
+        codigo_postal = _validar_texto_usuario(
+            direccion, "codigo_postal", 1, 10, obligatorio=False
+        )
+
+        usuario = db.session.get(Usuario, current_user.IdUsuario)
+        persona = getattr(usuario, "persona", None)
+        cliente = getattr(persona, "cliente", None)
+        if usuario is None or persona is None or cliente is None:
+            return jsonify({"error": "No se encontro el perfil del cliente."}), 404
+
+        correo_ocupado = db.session.execute(
+            select(Persona.IdPersona).where(
+                Persona.CorreoElectronico == correo,
+                Persona.IdPersona != persona.IdPersona,
+            )
+        ).scalar_one_or_none()
+        if correo_ocupado is not None:
+            return jsonify({"error": "El correo electronico ya esta registrado."}), 409
+
+        identificador_ocupado = db.session.execute(
+            select(Usuario.IdUsuario).where(
+                Usuario.Identificador == identificador,
+                Usuario.IdUsuario != usuario.IdUsuario,
+            )
+        ).scalar_one_or_none()
+        if identificador_ocupado is not None:
+            return jsonify({"error": "El identificador ya esta registrado."}), 409
+
+        persona.Nombre = nombre
+        persona.Apellidos = apellidos
+        persona.CorreoElectronico = correo
+        persona.Telefono = telefono
+        persona.Calle = calle
+        persona.Colonia = colonia
+        persona.NumeroExterior = numero_exterior
+        persona.NumeroInterior = numero_interior
+        persona.CodigoPostal = codigo_postal
+        usuario.Identificador = identificador
+        if password:
+            usuario.PasswordHash = generate_password_hash(password)
+
+        db.session.commit()
+        return jsonify(
+            {
+                "mensaje": "Datos del usuario actualizados correctamente.",
+                "usuario": _serializar_usuario_api(usuario),
+            }
+        )
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "El correo o identificador ya esta registrado."}), 409
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("No fue posible actualizar el usuario desde la API.")
+        return jsonify({"error": "Error interno del servidor."}), 500
+
+
+@catalogo_cliente_bp.get("/api/clientes/usuario")
+@login_required
+def api_obtener_usuario():
+    try:
+        usuario = db.session.get(Usuario, current_user.IdUsuario)
+        persona = getattr(usuario, "persona", None)
+        cliente = getattr(persona, "cliente", None)
+        if usuario is None or persona is None or cliente is None:
+            return jsonify({"error": "No se encontro el perfil del cliente."}), 404
+        return jsonify({"usuario": _serializar_usuario_api(usuario)})
+    except SQLAlchemyError:
+        current_app.logger.exception("No fue posible consultar el usuario desde la API.")
         return jsonify({"error": "Error interno del servidor."}), 500
 
 
